@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Answer a few quick questions about your pet and see your personalized PawPass box and price, live." />
+  <title>PawPass — Find Your Fit</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .top-nav {
+      text-align: center;
+    }
+
+    .quiz-layout {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 32px;
+      align-items: start;
+    }
+
+    /* Photo pane — sits beside the quiz on desktop/web */
+    .photo-pane {
+      position: sticky;
+      top: 24px;
+      background-color: #f5f0e6;
+      border-radius: 12px;
+      padding: 28px 20px;
+      text-align: center;
+    }
+
+    .photo-box {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      border-radius: 12px;
+      background-color: #ece2cd;
+      border: 1px dashed #c8b48c;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 3.5rem;
+      transition: transform 0.15s ease;
+    }
+
+    .photo-box.pulse {
+      transform: scale(1.04);
+    }
+
+    .photo-caption {
+      margin-top: 14px;
+      font-size: 0.85rem;
+      color: #7a6c5b;
+      line-height: 1.5;
+    }
+
+    .photo-placeholder-note {
+      margin-top: 10px;
+      font-size: 0.7rem;
+      color: #a08c74;
+      font-style: italic;
+    }
+
+    .live-price {
+      margin-top: 18px;
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #4a3f35;
+    }
+
+    .live-price span {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 400;
+      color: #a08c74;
+      margin-top: 4px;
+    }
+
+    /* Quiz pane */
+    .question {
+      margin-bottom: 28px;
+    }
+
+    .question:last-child {
+      margin-bottom: 0;
+    }
+
+    .question .q-label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 4px;
+      font-size: 1rem;
+    }
+
+    .question .q-num {
+      color: #a08c74;
+      font-weight: 400;
+      margin-right: 6px;
+    }
+
+    .options {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    .option-btn {
+      flex: 1 1 auto;
+      min-width: 90px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1.5px solid #e4d9c4;
+      background-color: #fffdf9;
+      color: #4a3f35;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: border-color 0.15s ease, background-color 0.15s ease;
+    }
+
+    .option-btn:hover {
+      border-color: #c8b48c;
+    }
+
+    .option-btn[aria-pressed="true"] {
+      background-color: #4a3f35;
+      border-color: #4a3f35;
+      color: #fffdf9;
+      font-weight: 600;
+    }
+
+    @media (max-width: 720px) {
+      .quiz-layout {
+        grid-template-columns: 1fr;
+      }
+      .photo-pane {
+        position: static;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <a class="back-link top-nav" href="index.html">← Back to PawPass</a>
+
+    <section class="card">
+      <h2>Find your fit</h2>
+      <p class="section-intro">
+        Answer a few quick questions about your pet. Change any answer any time —
+        the picture and price update instantly.
+      </p>
+
+      <div class="quiz-layout">
+
+        <!-- Photo pane: side-by-side on desktop, stacks above the quiz on mobile -->
+        <div class="photo-pane">
+          <div class="photo-box" id="photo-box">🐾</div>
+          <div class="photo-caption" id="photo-caption">Pick your pet's profile to begin</div>
+          <div class="photo-placeholder-note">Placeholder — real product photography coming later</div>
+          <div class="live-price" id="live-price">—</div>
+        </div>
+
+        <!-- Quiz pane -->
+        <div class="quiz-pane">
+
+          <div class="question">
+            <label class="q-label"><span class="q-num">1.</span>What kind of pet do you have?</label>
+            <div class="options" data-question="species">
+              <button type="button" class="option-btn" data-value="dog">🐶 Dog</button>
+              <button type="button" class="option-btn" data-value="cat">🐱 Cat</button>
+            </div>
+          </div>
+
+          <div class="question">
+            <label class="q-label"><span class="q-num">2.</span>How big are they?</label>
+            <div class="options" data-question="size">
+              <button type="button" class="option-btn" data-value="small">Small</button>
+              <button type="button" class="option-btn" data-value="medium">Medium</button>
+              <button type="button" class="option-btn" data-value="large">Large</button>
+            </div>
+          </div>
+
+          <div class="question">
+            <label class="q-label"><span class="q-num">3.</span>What's their coat like?</label>
+            <div class="options" data-question="coat">
+              <button type="button" class="option-btn" data-value="short-hair">Short-hair</button>
+              <button type="button" class="option-btn" data-value="long-hair">Long-hair</button>
+              <button type="button" class="option-btn" data-value="hairless">Hairless</button>
+            </div>
+          </div>
+
+          <div class="question">
+            <label class="q-label"><span class="q-num">4.</span>Which plan sounds right?</label>
+            <div class="options" data-question="tier">
+              <button type="button" class="option-btn" data-value="starter">Starter</button>
+              <button type="button" class="option-btn" data-value="core">Core</button>
+              <button type="button" class="option-btn" data-value="premium">Premium</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="disclaimer">
+        <strong>ⓘ Please note:</strong> the profile and price shown above are
+        informational only, not veterinary diagnosis or a formal recommendation.
+        Premium's Quarterly Pet Wellness Review is non-diagnostic lifestyle advice —
+        always consult a vet for your pet's actual health needs.
+      </div>
+    </section>
+
+  </div>
+
+  <script type="module">
+    import { getStarterPrice, getCorePrice, getPremiumPriceRange } from './pricing-data.js';
+
+    const state = { species: null, size: null, coat: null, tier: null };
+
+    const photoBox = document.getElementById('photo-box');
+    const photoCaption = document.getElementById('photo-caption');
+    const livePrice = document.getElementById('live-price');
+
+    const speciesEmoji = { dog: '🐶', cat: '🐱' };
+    const sizeLabel = { small: 'Small', medium: 'Medium', large: 'Large' };
+    const coatLabel = { 'short-hair': 'short-hair', 'long-hair': 'long-hair', hairless: 'hairless' };
+    const tierLabel = { starter: 'Starter', core: 'Core', premium: 'Premium' };
+
+    // Wire up every option button: click selects it, marks it pressed,
+    // clears its siblings, updates state, and re-renders the live preview.
+    document.querySelectorAll('.options').forEach((group) => {
+      const question = group.dataset.question;
+      group.querySelectorAll('.option-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          group.querySelectorAll('.option-btn').forEach((b) => b.setAttribute('aria-pressed', 'false'));
+          btn.setAttribute('aria-pressed', 'true');
+          state[question] = btn.dataset.value;
+          render();
+        });
+      });
+    });
+
+    function render() {
+      const { species, size, coat, tier } = state;
+
+      // Photo placeholder: swaps emoji/caption based on current answers.
+      // Real photo-style mockups will replace this box later (per the
+      // "photo-style product photography" direction) without touching
+      // the logic below — only the image source needs to change.
+      if (species) {
+        photoBox.textContent = speciesEmoji[species];
+        photoBox.classList.remove('pulse');
+        void photoBox.offsetWidth; // restart animation
+        photoBox.classList.add('pulse');
+      } else {
+        photoBox.textContent = '🐾';
+      }
+
+      const parts = [];
+      if (species) parts.push(speciesEmoji[species] === '🐶' ? 'Dog' : 'Cat');
+      if (size) parts.push(sizeLabel[size]);
+      if (coat) parts.push(coatLabel[coat]);
+      photoCaption.textContent = parts.length
+        ? parts.join(' · ')
+        : "Pick your pet's profile to begin";
+
+      // Price only computes once all three profile answers are in —
+      // reuses the exact same pricing-data.js functions as index.html,
+      // so this can never show a different number for the same profile.
+      if (species && size && coat && tier) {
+        let text = '';
+        if (tier === 'starter') {
+          const price = getStarterPrice(species, size);
+          text = price != null ? `~${price} THB / month` : "Combination not available yet";
+        } else if (tier === 'core') {
+          const price = getCorePrice(species, size, coat);
+          text = price != null ? `~${price} THB / month` : "Combination not available yet";
+        } else if (tier === 'premium') {
+          const range = getPremiumPriceRange(species, size, coat);
+          text = range ? `~${range.min}–${range.max} THB / month` : "Combination not available yet";
+        }
+        livePrice.innerHTML = `${text}<span>${tierLabel[tier]} · ${parts.join(' · ')}</span>`;
+      } else {
+        livePrice.innerHTML = `—<span>Answer all 4 questions to see your price</span>`;
+      }
+    }
+  </script>
+</body>
+</html>
