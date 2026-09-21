@@ -123,6 +123,50 @@
       transform: scale(1.04);
     }
 
+    .photo-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 11px; /* just under the box's 12px so the border shows */
+    }
+
+    .photo-upload-row {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .upload-btn {
+      display: inline-block;
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1.5px solid #e4d9c4;
+      background-color: #fffdf9;
+      color: #4a3f35;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+
+    .upload-btn:hover {
+      border-color: #c8b48c;
+      background-color: #f5f0e6;
+    }
+
+    .remove-photo-btn {
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1.5px solid #e4d9c4;
+      background-color: #fffdf9;
+      color: #b04a3f;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+
+    .remove-photo-btn:hover {
+      border-color: #b04a3f;
+    }
+
     .photo-caption {
       margin-top: 14px;
       font-size: 0.85rem;
@@ -180,7 +224,28 @@
       font-size: 0.8rem;
       font-weight: 400;
       color: #a08c74;
-      cursor: help;
+      cursor: pointer;
+      /* reset button defaults — this used to be a <span>, converted to
+         a real <button> since a title-attribute hover tooltip does
+         nothing on click/tap (the bug: "didn't work" on touch devices
+         and for anyone expecting a click response). */
+      background: none;
+      border: none;
+      padding: 0;
+      font-family: inherit;
+    }
+
+    .info-popover {
+      position: fixed;
+      max-width: 260px;
+      background-color: #4a3f35;
+      color: #fffdf9;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      line-height: 1.45;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+      z-index: 100;
     }
 
     .options {
@@ -544,6 +609,11 @@
 
     <a class="back-link top-nav" href="index.html">← Back to PawPass</a>
 
+    <!-- Shared popover for every ⓘ info button (see .info-icon click
+         wiring) — one element, positioned near whichever button was
+         clicked, rather than a per-icon tooltip. -->
+    <div class="info-popover" id="info-popover" hidden></div>
+
     <section class="card">
       <h2>Find your fit</h2>
       <p class="section-intro">
@@ -562,9 +632,17 @@
 
         <!-- Photo pane: side-by-side on desktop, stacks above the quiz on mobile -->
         <div class="photo-pane">
-          <div class="photo-box" id="photo-box">🐾</div>
+          <div class="photo-box" id="photo-box">
+            <span id="photo-emoji">🐾</span>
+            <img id="photo-img" alt="Your pet" hidden />
+          </div>
+          <div class="photo-upload-row">
+            <label class="upload-btn" for="photo-upload-input">📷 Upload photo</label>
+            <input type="file" accept="image/*" id="photo-upload-input" hidden />
+            <button type="button" class="remove-photo-btn" id="remove-photo-btn" hidden>✕ Remove</button>
+          </div>
           <div class="photo-caption" id="photo-caption">Pick your pet's profile to begin</div>
-          <div class="photo-placeholder-note">Placeholder — real product photography coming later</div>
+          <div class="photo-placeholder-note" id="photo-placeholder-note">Placeholder — real product photography coming later</div>
           <div class="live-price" id="live-price">—</div>
           <div class="pick-two-summary" id="pick-two-summary"></div>
         </div>
@@ -601,7 +679,7 @@
           <div class="question">
             <label class="q-label">
               <span class="q-num">4.</span>Breed <span class="q-optional">(optional)</span>
-              <span class="info-icon" title="Purely a care-tip bonus layer — it never changes price or packing. Any breed not on this list falls back to the size/coat profile above.">ⓘ</span>
+              <button type="button" class="info-icon" data-info="Purely a care-tip bonus layer — it never changes price or packing. Any breed not on this list falls back to the size/coat profile above.">ⓘ</button>
             </label>
             <select class="breed-select" id="breed-select">
               <option value="">Pick species first</option>
@@ -611,7 +689,7 @@
           <div class="question">
             <label class="q-label">
               <span class="q-num">5.</span>Weight (kg)
-              <span class="info-icon" title="Used for weight/obesity guidance (adult pets) and the growth chart (puppies/kittens). Not used for pricing.">ⓘ</span>
+              <button type="button" class="info-icon" data-info="Used for weight/obesity guidance (adult pets) and the growth chart (puppies/kittens). Not used for pricing.">ⓘ</button>
             </label>
             <input type="number" class="number-input" id="weight-input" min="0" step="0.1" placeholder="e.g. 12.5" />
           </div>
@@ -619,7 +697,7 @@
           <div class="question">
             <label class="q-label">
               <span class="q-num">6.</span>Date of birth <span class="q-optional">(optional, preferred)</span>
-              <span class="info-icon" title="Primary source for age-based recommendations (life stage, growth chart). If unknown, adoption date below is used as a fallback estimate.">ⓘ</span>
+              <button type="button" class="info-icon" data-info="Primary source for age-based recommendations (life stage, growth chart). If unknown, adoption date below is used as a fallback estimate.">ⓘ</button>
             </label>
             <input type="date" class="date-input" id="dob-input" />
           </div>
@@ -627,7 +705,7 @@
           <div class="question">
             <label class="q-label">
               <span class="q-num">7.</span>When did you adopt them? <span class="q-optional">(optional)</span>
-              <span class="info-icon" title="Used as a fallback to estimate age only if date of birth above is unknown — assumes ~10 weeks old at adoption, a typical shelter age.">ⓘ</span>
+              <button type="button" class="info-icon" data-info="Used as a fallback to estimate age only if date of birth above is unknown — assumes ~10 weeks old at adoption, a typical shelter age.">ⓘ</button>
             </label>
             <input type="date" class="date-input" id="adoption-date-input" />
           </div>
@@ -635,7 +713,7 @@
           <div class="question">
             <label class="q-label">
               <span class="q-num">8.</span>Spayed or neutered? <span class="q-optional">(optional)</span>
-              <span class="info-icon" title="Not used for pricing yet — helps fine-tune the recommendation engine (e.g. calorie needs) as it's built out further.">ⓘ</span>
+              <button type="button" class="info-icon" data-info="Not used for pricing yet — helps fine-tune the recommendation engine (e.g. calorie needs) as it's built out further.">ⓘ</button>
             </label>
             <div class="options" data-question="spayedNeutered" role="group" aria-label="Spayed or neutered?">
               <button type="button" class="option-btn" data-value="yes">Yes</button>
@@ -789,7 +867,7 @@
                   <input type="checkbox" id="consent-aggregate" />
                   Also include my anonymized feedback in aggregated trend insights
                   shared with pet brand partners
-                  <span class="info-icon" title="Only de-identified, aggregated trends are ever shared (e.g. 'medium-dog owners in Bangkok reject fish treats at 2x the rate of other cities') — never your individual feedback or identity. Optional — personalization above works the same either way.">ⓘ</span>
+                  <button type="button" class="info-icon" data-info="Only de-identified, aggregated trends are ever shared (e.g. 'medium-dog owners in Bangkok reject fish treats at 2x the rate of other cities') — never your individual feedback or identity. Optional — personalization above works the same either way.">ⓘ</button>
                   <span class="q-optional">(optional)</span>
                 </label>
                 <p class="consent-hint" id="consent-hint"></p>
@@ -875,6 +953,11 @@
         // showResults back without needing to recompute a step index.
         currentStep: 0,
         showResults: false,
+        // User-uploaded photo, per pet. An object URL (not a data URL)
+        // for memory efficiency — must be revoked with
+        // URL.revokeObjectURL when replaced or when the pet is removed,
+        // or the browser holds the image data for the whole session.
+        photoUrl: null,
       };
     }
 
@@ -891,6 +974,11 @@
     const dobInput = document.getElementById('dob-input');
     const adoptionDateInput = document.getElementById('adoption-date-input');
     const photoBox = document.getElementById('photo-box');
+    const photoEmoji = document.getElementById('photo-emoji');
+    const photoImg = document.getElementById('photo-img');
+    const photoUploadInput = document.getElementById('photo-upload-input');
+    const removePhotoBtn = document.getElementById('remove-photo-btn');
+    const photoPlaceholderNote = document.getElementById('photo-placeholder-note');
     const photoCaption = document.getElementById('photo-caption');
     const livePrice = document.getElementById('live-price');
     const pickTwoSummary = document.getElementById('pick-two-summary');
@@ -929,6 +1017,7 @@
     const resultsView = document.getElementById('results-view');
     const stepNav = document.getElementById('step-nav');
     const editAnswersBtn = document.getElementById('edit-answers-btn');
+    const infoPopover = document.getElementById('info-popover');
 
     // The 10 profile-question steps, captured once in DOM order. Only
     // one is shown at a time (per pet, via pet.currentStep) — the "quiz-
@@ -1156,6 +1245,50 @@
       render();
     });
 
+    // ⓘ info buttons: click-to-toggle popover, positioned near whichever
+    // button was clicked. Fixes the "didn't work" bug — these used to be
+    // plain <span title="...">, which only shows on desktop mouse-hover
+    // and does nothing at all on click or on touch devices.
+    let activeInfoBtn = null;
+    document.querySelectorAll('.info-icon').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (activeInfoBtn === btn) {
+          infoPopover.hidden = true;
+          activeInfoBtn = null;
+          return;
+        }
+        infoPopover.textContent = btn.dataset.info;
+        infoPopover.hidden = false;
+        const rect = btn.getBoundingClientRect();
+        const popoverWidth = 260;
+        infoPopover.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - popoverWidth - 8))}px`;
+        infoPopover.style.top = `${rect.bottom + 8}px`;
+        activeInfoBtn = btn;
+      });
+    });
+    document.addEventListener('click', () => {
+      infoPopover.hidden = true;
+      activeInfoBtn = null;
+    });
+
+    photoUploadInput.addEventListener('change', () => {
+      const file = photoUploadInput.files[0];
+      if (!file) return;
+      const pet = getActivePet();
+      if (pet.photoUrl) URL.revokeObjectURL(pet.photoUrl); // release the old one first
+      pet.photoUrl = URL.createObjectURL(file);
+      photoUploadInput.value = ''; // allow re-selecting the same file later
+      render();
+    });
+
+    removePhotoBtn.addEventListener('click', () => {
+      const pet = getActivePet();
+      if (pet.photoUrl) URL.revokeObjectURL(pet.photoUrl);
+      pet.photoUrl = null;
+      render();
+    });
+
     submitFeedbackBtn.addEventListener('click', () => {
       const pet = getActivePet();
       const hasPortion = pet.pendingPortion != null;
@@ -1245,6 +1378,7 @@
       if (pets.length <= 1) return; // always keep at least one pet
       const idx = pets.findIndex((p) => p.id === id);
       if (idx === -1) return;
+      if (pets[idx].photoUrl) URL.revokeObjectURL(pets[idx].photoUrl);
       pets.splice(idx, 1);
       if (activePetId === id) {
         activePetId = pets[Math.max(0, idx - 1)].id;
@@ -1401,18 +1535,26 @@
         ? `Avoid: ${avoids.size ? [...avoids].join(', ') : '—'} · Favorite: ${favorites.size ? [...favorites].join(', ') : '—'}`
         : '';
 
-      // Photo placeholder: swaps emoji/caption based on current answers.
-      // Real photo-style mockups will replace this box later (per the
-      // "photo-style product photography" direction) without touching
-      // the logic below — only the image source needs to change.
-      if (species) {
-        photoBox.textContent = speciesEmoji[species];
-        photoBox.classList.remove('pulse');
-        void photoBox.offsetWidth; // restart animation
-        photoBox.classList.add('pulse');
+      // Photo: shows the user's uploaded photo if there is one, else
+      // falls back to the species emoji placeholder. NOTE: photoBox now
+      // has real child elements (#photo-emoji, #photo-img) — never set
+      // photoBox.textContent directly, that would wipe them out.
+      if (pet.photoUrl) {
+        photoImg.src = pet.photoUrl;
+        photoImg.hidden = false;
+        photoEmoji.hidden = true;
+        removePhotoBtn.hidden = false;
+        photoPlaceholderNote.hidden = true;
       } else {
-        photoBox.textContent = '🐾';
+        photoImg.hidden = true;
+        photoEmoji.hidden = false;
+        removePhotoBtn.hidden = true;
+        photoPlaceholderNote.hidden = false;
+        photoEmoji.textContent = species ? speciesEmoji[species] : '🐾';
       }
+      photoBox.classList.remove('pulse');
+      void photoBox.offsetWidth; // restart animation
+      photoBox.classList.add('pulse');
 
       const parts = [];
       if (species) parts.push(speciesEmoji[species] === '🐶' ? 'Dog' : 'Cat');
