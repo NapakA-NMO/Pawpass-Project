@@ -15,15 +15,22 @@
 // scoped deliberately small and proportionate to a demo — confirmed
 // with the user rather than assumed.
 
+// Food lists intentionally have one item per Pick Two flavor tag (see
+// customize.html's FLAVOR_TAGS_BY_SPECIES: dog = Chicken/Beef/Salmon-
+// Fish, cat = Chicken/Tuna-Fish/Salmon) — a prior version had only 2
+// food items per species, so "Beef" (dog) and "Salmon" (cat) had no
+// matching catalog item at all: a customer could set either as their
+// permanent Favorite and it would never actually appear anywhere,
+// including in the Secret Item preview. Fixed by covering every tag.
 export const CATALOG = {
   dog: {
-    food: ['Chicken & Rice Kibble', 'Salmon Pâté Pouch'],
+    food: ['Chicken & Rice Kibble', 'Beef & Vegetable Kibble', 'Salmon Pâté Pouch'],
     treats: ['Chicken Jerky Bites', 'Soft Training Bites'],
     supplements: ['Glucosamine Joint Chews', 'Omega-3 Skin & Coat Oil'],
     toy: ['Durable Rubber Chew Bone', 'Rope Tug Toy'],
   },
   cat: {
-    food: ['Chicken & Rice Kibble', 'Tuna Pâté Pouch'],
+    food: ['Chicken & Rice Kibble', 'Tuna Pâté Pouch', 'Salmon Pâté Pouch'],
     treats: ['Freeze-Dried Bonito Flakes', 'Lickable Chicken Treat'],
     supplements: ['Hairball Control Chews', 'Omega-3 Skin & Coat Oil'],
     toy: ['Feather Wand Toy', 'Crinkle Ball'],

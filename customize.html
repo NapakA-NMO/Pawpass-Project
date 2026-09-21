@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="Answer a few quick questions about your pet and see your personalized PawPass box, price, and care recommendations, live." />
   <title>PawPass — Find Your Fit</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐾</text></svg>" />
   <link rel="stylesheet" href="styles.css" />
   <style>
     .top-nav {
@@ -231,6 +232,12 @@
       font-weight: 400;
       font-size: 0.75rem;
       color: #a08c74;
+    }
+
+    .q-required {
+      font-weight: 600;
+      font-size: 0.75rem;
+      color: #b04a3f;
     }
 
     @media (max-width: 720px) {
@@ -507,7 +514,7 @@
 
           <div class="question">
             <label class="q-label"><span class="q-num">1.</span>What kind of pet do you have?</label>
-            <div class="options" data-question="species">
+            <div class="options" data-question="species" role="group" aria-label="What kind of pet do you have?">
               <button type="button" class="option-btn" data-value="dog">🐶 Dog</button>
               <button type="button" class="option-btn" data-value="cat">🐱 Cat</button>
             </div>
@@ -515,7 +522,7 @@
 
           <div class="question">
             <label class="q-label"><span class="q-num">2.</span>How big are they?</label>
-            <div class="options" data-question="size">
+            <div class="options" data-question="size" role="group" aria-label="How big are they?">
               <button type="button" class="option-btn" data-value="small">Small</button>
               <button type="button" class="option-btn" data-value="medium">Medium</button>
               <button type="button" class="option-btn" data-value="large">Large</button>
@@ -524,7 +531,7 @@
 
           <div class="question">
             <label class="q-label"><span class="q-num">3.</span>What's their coat like?</label>
-            <div class="options" data-question="coat">
+            <div class="options" data-question="coat" role="group" aria-label="What's their coat like?">
               <button type="button" class="option-btn" data-value="short-hair">Short-hair</button>
               <button type="button" class="option-btn" data-value="long-hair">Long-hair</button>
               <button type="button" class="option-btn" data-value="hairless">Hairless</button>
@@ -570,7 +577,7 @@
               <span class="q-num">8.</span>Spayed or neutered? <span class="q-optional">(optional)</span>
               <span class="info-icon" title="Not used for pricing yet — helps fine-tune the recommendation engine (e.g. calorie needs) as it's built out further.">ⓘ</span>
             </label>
-            <div class="options" data-question="spayedNeutered">
+            <div class="options" data-question="spayedNeutered" role="group" aria-label="Spayed or neutered?">
               <button type="button" class="option-btn" data-value="yes">Yes</button>
               <button type="button" class="option-btn" data-value="no">No</button>
               <button type="button" class="option-btn" data-value="unsure">Not sure</button>
@@ -579,7 +586,7 @@
 
           <div class="question">
             <label class="q-label"><span class="q-num">9.</span>Which plan sounds right?</label>
-            <div class="options" data-question="tier">
+            <div class="options" data-question="tier" role="group" aria-label="Which plan sounds right?">
               <button type="button" class="option-btn" data-value="starter">Starter</button>
               <button type="button" class="option-btn" data-value="core">Core</button>
               <button type="button" class="option-btn" data-value="premium">Premium</button>
@@ -592,115 +599,122 @@
             <div id="pick-two-body" hidden>
               <div class="pick-two-group">
                 <span class="pt-label">Avoid <span class="pt-limit" id="avoid-limit-label"></span> — never ships</span>
-                <div class="options" data-mode="avoid" id="avoid-options"></div>
+                <div class="options" data-mode="avoid" id="avoid-options" role="group" aria-label="Avoid flavors"></div>
               </div>
               <div class="pick-two-group">
                 <span class="pt-label">Favorite <span class="pt-limit" id="favorite-limit-label"></span> — always included</span>
-                <div class="options" data-mode="favorite" id="favorite-options"></div>
+                <div class="options" data-mode="favorite" id="favorite-options" role="group" aria-label="Favorite flavors"></div>
               </div>
               <div class="pt-hint" id="pick-two-hint"></div>
             </div>
           </div>
 
-        </div>
-      </div>
-
-      <!-- Recommendations: the expanded recommendation engine's results,
-           right where a visitor would actually read a health-adjacent
-           claim, per the vet disclaimer placement rule established
-           earlier for the pricing section. -->
-      <div class="recommendations">
-        <h2>Recommendations</h2>
-        <p class="rec-empty-note" id="rec-empty-note">
-          Answer species, size, and either a date of birth or adoption date above
-          to see personalized care recommendations here.
-        </p>
-        <div id="rec-body" hidden>
-          <div class="rec-item">
-            <span class="rec-icon">📋</span>
-            <div><strong>Life stage</strong><span id="rec-life-stage"></span></div>
-          </div>
-          <div class="rec-item" id="rec-dental" hidden>
-            <span class="rec-icon">🦷</span>
-            <div><strong>Dental care</strong><span id="rec-dental-text"></span></div>
-          </div>
-          <div class="rec-item" id="rec-exercise" hidden>
-            <span class="rec-icon">🏃</span>
-            <div><strong>Exercise<span class="rec-source-tag" id="rec-exercise-source"></span></strong><span id="rec-exercise-text"></span></div>
-          </div>
-          <div class="rec-item" id="rec-weight" hidden>
-            <span class="rec-icon">⚖️</span>
-            <div><strong id="rec-weight-label">Weight guidance</strong><span id="rec-weight-text"></span></div>
-          </div>
-          <div class="rec-item" id="rec-secret" hidden>
-            <span class="rec-icon">✨</span>
-            <div>
-              <strong>Secret item</strong>
-              <span id="rec-secret-text"></span>
-              <button type="button" class="reroll-btn" id="secret-reroll-btn">🎲 Try another</button>
+          <!-- Recommendations and Feedback live inside .quiz-pane (not
+               as separate full-width sections below .quiz-layout) so
+               the sticky .photo-pane keeps following the visitor
+               through the results, not just the profile questions —
+               fixes a gap where the live-updating photo used to
+               disappear exactly where it mattered most. -->
+          <!-- Recommendations: the expanded recommendation engine's results,
+               right where a visitor would actually read a health-adjacent
+               claim, per the vet disclaimer placement rule established
+               earlier for the pricing section. -->
+          <div class="recommendations">
+            <h2>Recommendations</h2>
+            <p class="rec-empty-note" id="rec-empty-note">
+              Answer species, size, and either a date of birth or adoption date above
+              to see personalized care recommendations here.
+            </p>
+            <div id="rec-body" hidden>
+              <div class="rec-item">
+                <span class="rec-icon">📋</span>
+                <div><strong>Life stage</strong><span id="rec-life-stage"></span></div>
+              </div>
+              <div class="rec-item" id="rec-dental" hidden>
+                <span class="rec-icon">🦷</span>
+                <div><strong>Dental care</strong><span id="rec-dental-text"></span></div>
+              </div>
+              <div class="rec-item" id="rec-exercise" hidden>
+                <span class="rec-icon">🏃</span>
+                <div><strong>Exercise<span class="rec-source-tag" id="rec-exercise-source"></span></strong><span id="rec-exercise-text"></span></div>
+              </div>
+              <div class="rec-item" id="rec-weight" hidden>
+                <span class="rec-icon">⚖️</span>
+                <div><strong id="rec-weight-label">Weight guidance</strong><span id="rec-weight-text"></span></div>
+              </div>
+              <div class="rec-item" id="rec-secret" hidden>
+                <span class="rec-icon">✨</span>
+                <div>
+                  <strong>Secret item</strong>
+                  <span id="rec-secret-text"></span>
+                  <button type="button" class="reroll-btn" id="secret-reroll-btn">🎲 Try another</button>
+                </div>
+              </div>
+              <div class="rec-item" id="rec-taste-memory">
+                <span class="rec-icon">🧠</span>
+                <div><strong>Taste memory</strong><span id="rec-taste-memory-text"></span></div>
+              </div>
             </div>
           </div>
-          <div class="rec-item" id="rec-taste-memory">
-            <span class="rec-icon">🧠</span>
-            <div><strong>Taste memory</strong><span id="rec-taste-memory-text"></span></div>
-          </div>
-        </div>
-      </div>
 
-      <!-- Post-order feedback (Section 7) — simulated here since this
-           demo has no real order/checkout lifecycle to trigger it after
-           an actual shipped box. Submitting feeds pet.feedbackHistory,
-           which is what makes the obesity-guidance override above and
-           Taste memory below go from "architecture-only" to live. -->
-      <div class="feedback-section">
-        <h2>Feedback <span class="q-optional">(simulates a delivered box)</span></h2>
-        <p class="rec-empty-note" id="feedback-locked">Pick a plan above to unlock this</p>
-        <div id="feedback-body" hidden>
-          <p class="section-intro" style="margin-bottom:16px;">
-            In a real launch this would trigger automatically after each box ships
-            (Section 7). Here, simulate submitting feedback to see Taste memory and
-            weight guidance react.
-          </p>
-          <div class="question">
-            <label class="q-label">Portion size</label>
-            <div class="options" data-question="pendingPortion">
-              <button type="button" class="option-btn" data-value="too much">Too much</button>
-              <button type="button" class="option-btn" data-value="right">Just right</button>
-              <button type="button" class="option-btn" data-value="too little">Too little</button>
+          <!-- Post-order feedback (Section 7) — simulated here since this
+               demo has no real order/checkout lifecycle to trigger it after
+               an actual shipped box. Submitting feeds pet.feedbackHistory,
+               which is what makes the obesity-guidance override above and
+               Taste memory below go from "architecture-only" to live. -->
+          <div class="feedback-section">
+            <h2>Feedback <span class="q-optional">(simulates a delivered box)</span></h2>
+            <p class="rec-empty-note" id="feedback-locked">Pick a plan above to unlock this</p>
+            <div id="feedback-body" hidden>
+              <p class="section-intro" style="margin-bottom:16px;">
+                In a real launch this would trigger automatically after each box ships
+                (Section 7). Here, simulate submitting feedback to see Taste memory and
+                weight guidance react.
+              </p>
+              <div class="question">
+                <label class="q-label">Portion size</label>
+                <div class="options" data-question="pendingPortion" role="group" aria-label="Portion size">
+                  <button type="button" class="option-btn" data-value="too much">Too much</button>
+                  <button type="button" class="option-btn" data-value="right">Just right</button>
+                  <button type="button" class="option-btn" data-value="too little">Too little</button>
+                </div>
+              </div>
+              <div class="question">
+                <label class="q-label">Did they like each flavor? <span class="q-optional">(optional, any number)</span></label>
+                <div id="feedback-tags"></div>
+              </div>
+
+              <!-- PDPA consent, captured at the point of collection (Thai PDPA,
+                   enforced since June 1, 2022, requires explicit consent
+                   before/at collection — Section 9's flagged gap). Two
+                   separate purposes, not bundled into one checkbox: using
+                   the feedback to personalize this pet's box (Section 7,
+                   core to the service) vs. including it in aggregated,
+                   de-identified trend insights sold to pet brand partners
+                   (Section 7's data-as-product angle, framed as "aggregated
+                   insights," never "selling customer data," per the brief). -->
+              <div class="consent-block">
+                <label class="consent-row">
+                  <input type="checkbox" id="consent-personalize" />
+                  I consent to this feedback being used to personalize my pet's box
+                  (Pick Two suggestions, taste memory, portion sizing).
+                  <span class="q-required">(required)</span>
+                </label>
+                <label class="consent-row">
+                  <input type="checkbox" id="consent-aggregate" />
+                  Also include my anonymized feedback in aggregated trend insights
+                  shared with pet brand partners
+                  <span class="info-icon" title="Only de-identified, aggregated trends are ever shared (e.g. 'medium-dog owners in Bangkok reject fish treats at 2x the rate of other cities') — never your individual feedback or identity. Optional — personalization above works the same either way.">ⓘ</span>
+                  <span class="q-optional">(optional)</span>
+                </label>
+                <p class="consent-hint" id="consent-hint"></p>
+              </div>
+
+              <button type="button" class="add-pet-btn" id="submit-feedback-btn">Submit feedback for this box</button>
+              <ul class="feedback-history" id="feedback-history-list"></ul>
             </div>
           </div>
-          <div class="question">
-            <label class="q-label">Did they like each flavor? <span class="q-optional">(optional, any number)</span></label>
-            <div id="feedback-tags"></div>
-          </div>
 
-          <!-- PDPA consent, captured at the point of collection (Thai PDPA,
-               enforced since June 1, 2022, requires explicit consent
-               before/at collection — Section 9's flagged gap). Two
-               separate purposes, not bundled into one checkbox: using
-               the feedback to personalize this pet's box (Section 7,
-               core to the service) vs. including it in aggregated,
-               de-identified trend insights sold to pet brand partners
-               (Section 7's data-as-product angle, framed as "aggregated
-               insights," never "selling customer data," per the brief). -->
-          <div class="consent-block">
-            <label class="consent-row">
-              <input type="checkbox" id="consent-personalize" />
-              I consent to this feedback being used to personalize my pet's box
-              (Pick Two suggestions, taste memory, portion sizing).
-            </label>
-            <label class="consent-row">
-              <input type="checkbox" id="consent-aggregate" />
-              Also include my anonymized feedback in aggregated trend insights
-              shared with pet brand partners
-              <span class="info-icon" title="Only de-identified, aggregated trends are ever shared (e.g. 'medium-dog owners in Bangkok reject fish treats at 2x the rate of other cities') — never your individual feedback or identity. Optional — personalization above works the same either way.">ⓘ</span>
-              <span class="q-optional">(optional)</span>
-            </label>
-            <p class="consent-hint" id="consent-hint"></p>
-          </div>
-
-          <button type="button" class="add-pet-btn" id="submit-feedback-btn">Submit feedback for this box</button>
-          <ul class="feedback-history" id="feedback-history-list"></ul>
         </div>
       </div>
 
