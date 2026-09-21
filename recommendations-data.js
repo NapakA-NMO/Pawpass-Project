@@ -48,6 +48,55 @@ export const TIER1_BREEDS = {
   ],
 };
 
+// Typical coat per Tier-1 breed — used to pre-fill (not lock) the Coat
+// question once a breed is picked; the customer can still change it.
+// Demo-quality generalization, not a guarantee for every individual
+// animal (e.g. a Scottish Fold *can* be long-haired). "Mixed-breed
+// (หมาบ้าน)" is intentionally left unmapped — genuinely variable, no
+// suggestion is better than a wrong one there. Its cat counterpart,
+// "Domestic Shorthair (แมวบ้าน)", is mapped to short-hair since its own
+// name already names the coat.
+export const BREED_TYPICAL_COAT = {
+  'Poodle (Toy/Mini)': 'long-hair',
+  'Thai Bangkaew': 'long-hair',
+  'Shih Tzu': 'long-hair',
+  'Pomeranian': 'long-hair',
+  'Chihuahua': 'short-hair',
+  'Golden Retriever': 'long-hair',
+  'Labrador Retriever': 'short-hair',
+  'Siberian Husky': 'short-hair', // dense double coat, but not "long" in the grooming/shedding sense this app's 3-way split is built around
+  'French Bulldog': 'short-hair',
+  'Pug': 'short-hair',
+  'Beagle': 'short-hair',
+  'Thai Ridgeback': 'short-hair',
+  'Corgi': 'short-hair',
+  'Shiba Inu': 'short-hair',
+  'Siamese/Wichien Maat': 'short-hair',
+  'Korat/Si-Sawat': 'short-hair',
+  'Scottish Fold': 'short-hair',
+  'British Shorthair': 'short-hair',
+  'Persian': 'long-hair',
+  'American Shorthair': 'short-hair',
+  'Exotic Shorthair': 'short-hair',
+  'Ragdoll': 'long-hair',
+  'Munchkin': 'short-hair',
+  'Sphynx (hairless)': 'hairless',
+  'Maine Coon': 'long-hair',
+  'Domestic Shorthair (แมวบ้าน)': 'short-hair',
+  // 'Mixed-breed (หมาบ้าน)' intentionally omitted — genuinely variable.
+};
+
+// Weight-range descriptions shown on the quiz's Size question, once
+// species is known. Consistent with (but not derived from, to avoid
+// touching working obesity/growth math) the ADULT_WEIGHT_KG midpoints
+// below — small/medium bounds and the large cutoff match the brief's
+// partial cutoffs (large dog 25kg+, large cat >6kg); everything else
+// here is this module's own estimate, same as ADULT_WEIGHT_KG.
+export const SIZE_WEIGHT_BOUNDS_KG = {
+  dog: { small: 'up to ~10kg', medium: '~10–25kg', large: '25kg+' },
+  cat: { small: 'up to ~4kg', medium: '~4–6kg', large: '6kg+' },
+};
+
 const ASSUMED_AGE_AT_ADOPTION_WEEKS = 10;
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 const AVG_DAYS_PER_MONTH = 30.4375;

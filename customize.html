@@ -282,6 +282,18 @@
       font-weight: 600;
     }
 
+    .option-sub {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 400;
+      color: #a08c74;
+      margin-top: 4px;
+    }
+
+    .option-btn[aria-pressed="true"] .option-sub {
+      color: #d8c6a5;
+    }
+
     .date-input,
     .number-input,
     .breed-select {
@@ -661,29 +673,29 @@
           <div class="question" data-question="size" data-required="true">
             <label class="q-label"><span class="q-num">2.</span>How big are they?</label>
             <div class="options" data-question="size" role="group" aria-label="How big are they?">
-              <button type="button" class="option-btn" data-value="small">Small</button>
-              <button type="button" class="option-btn" data-value="medium">Medium</button>
-              <button type="button" class="option-btn" data-value="large">Large</button>
-            </div>
-          </div>
-
-          <div class="question" data-question="coat" data-required="true">
-            <label class="q-label"><span class="q-num">3.</span>What's their coat like?</label>
-            <div class="options" data-question="coat" role="group" aria-label="What's their coat like?">
-              <button type="button" class="option-btn" data-value="short-hair">Short-hair</button>
-              <button type="button" class="option-btn" data-value="long-hair">Long-hair</button>
-              <button type="button" class="option-btn" data-value="hairless">Hairless</button>
+              <button type="button" class="option-btn" data-value="small">Small<span class="option-sub" id="size-small-sub"></span></button>
+              <button type="button" class="option-btn" data-value="medium">Medium<span class="option-sub" id="size-medium-sub"></span></button>
+              <button type="button" class="option-btn" data-value="large">Large<span class="option-sub" id="size-large-sub"></span></button>
             </div>
           </div>
 
           <div class="question">
             <label class="q-label">
-              <span class="q-num">4.</span>Breed <span class="q-optional">(optional)</span>
-              <button type="button" class="info-icon" data-info="Purely a care-tip bonus layer — it never changes price or packing. Any breed not on this list falls back to the size/coat profile above.">ⓘ</button>
+              <span class="q-num">3.</span>Breed <span class="q-optional">(optional)</span>
+              <button type="button" class="info-icon" data-info="Purely a care-tip bonus layer — it never changes price or packing. Picking a breed pre-fills a typical coat below, which you can still change. Any breed not on this list falls back to the size/coat profile you pick.">ⓘ</button>
             </label>
             <select class="breed-select" id="breed-select">
               <option value="">Pick species first</option>
             </select>
+          </div>
+
+          <div class="question" data-question="coat" data-required="true">
+            <label class="q-label"><span class="q-num">4.</span>What's their coat like?</label>
+            <div class="options" data-question="coat" role="group" aria-label="What's their coat like?">
+              <button type="button" class="option-btn" data-value="short-hair">Short-hair</button>
+              <button type="button" class="option-btn" data-value="long-hair">Long-hair</button>
+              <button type="button" class="option-btn" data-value="hairless">Hairless</button>
+            </div>
           </div>
 
           <div class="question">
@@ -897,7 +909,8 @@
   <script type="module">
     import { getStarterPrice, getCorePrice, getPremiumPriceRange } from './pricing-data.js';
     import {
-      TIER1_BREEDS, getAgeMonths, getLifeStage, getDentalRisk, DENTAL_RECOMMENDATION,
+      TIER1_BREEDS, BREED_TYPICAL_COAT, SIZE_WEIGHT_BOUNDS_KG,
+      getAgeMonths, getLifeStage, getDentalRisk, DENTAL_RECOMMENDATION,
       getExerciseTip, getObesityGuidance, getGrowthGuidance,
     } from './recommendations-data.js';
     import { getSecretItemPreview, getTasteMemoryExclusions } from './catalog-data.js';
@@ -1189,6 +1202,14 @@
     breedSelect.addEventListener('change', () => {
       const pet = getActivePet();
       pet.breed = breedSelect.value || null;
+      // Pre-fill (not lock) the Coat question, which now comes right
+      // after Breed — the customer still answers/confirms it
+      // themselves on that step, this just saves them a click for the
+      // common case. Breeds with no mapped typical coat (e.g. the
+      // "mixed" entries) leave whatever coat answer already exists
+      // untouched, same as picking "Not sure" back to no breed at all.
+      const typicalCoat = BREED_TYPICAL_COAT[pet.breed];
+      if (typicalCoat) pet.coat = typicalCoat;
       render();
       autoAdvance(pet);
     });
@@ -1501,6 +1522,14 @@
         group.querySelectorAll('.option-btn').forEach((btn) => {
           btn.setAttribute('aria-pressed', pet[question] === btn.dataset.value ? 'true' : 'false');
         });
+      });
+
+      // Weight-range hints on the Size question — species is already
+      // answered by this step (Species is step 1, Size is step 2), so
+      // these can be species-specific from the start.
+      const sizeHints = species ? SIZE_WEIGHT_BOUNDS_KG[species] : null;
+      ['small', 'medium', 'large'].forEach((s) => {
+        document.getElementById(`size-${s}-sub`).textContent = sizeHints ? sizeHints[s] : '';
       });
 
       if (species !== breedOptionsBuiltForSpecies) {
