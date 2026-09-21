@@ -11,6 +11,82 @@
       text-align: center;
     }
 
+    /* Pet tabs (multi-pet quick-switch) */
+    .pet-tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 8px;
+    }
+
+    .pet-tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1.5px solid #e4d9c4;
+      background-color: #fffdf9;
+      color: #4a3f35;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
+    .pet-tab[aria-current="true"] {
+      background-color: #4a3f35;
+      border-color: #4a3f35;
+      color: #fffdf9;
+      font-weight: 600;
+    }
+
+    .pet-tab .remove-pet {
+      opacity: 0.6;
+      font-size: 0.75rem;
+    }
+
+    .pet-tab .remove-pet:hover {
+      opacity: 1;
+    }
+
+    .add-pet-btn {
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1.5px dashed #c8b48c;
+      background-color: transparent;
+      color: #8a6d3b;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
+    .add-pet-btn:hover {
+      background-color: #f5f0e6;
+    }
+
+    .pet-name-row {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .pet-name-row label {
+      display: block;
+      font-size: 0.8rem;
+      color: #a08c74;
+      margin-bottom: 4px;
+    }
+
+    .pet-name-row input[type="text"] {
+      width: 100%;
+      max-width: 260px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1.5px solid #e4d9c4;
+      background-color: #fffdf9;
+      color: #4a3f35;
+      font-size: 0.9rem;
+      text-align: center;
+    }
+
     .quiz-layout {
       display: grid;
       grid-template-columns: 300px 1fr;
@@ -97,6 +173,15 @@
       margin-right: 6px;
     }
 
+    .info-icon {
+      display: inline-block;
+      margin-left: 4px;
+      font-size: 0.8rem;
+      font-weight: 400;
+      color: #a08c74;
+      cursor: help;
+    }
+
     .options {
       display: flex;
       gap: 10px;
@@ -126,6 +211,22 @@
       border-color: #4a3f35;
       color: #fffdf9;
       font-weight: 600;
+    }
+
+    .date-input {
+      margin-top: 10px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1.5px solid #e4d9c4;
+      background-color: #fffdf9;
+      color: #4a3f35;
+      font-size: 0.9rem;
+    }
+
+    .q-optional {
+      font-weight: 400;
+      font-size: 0.75rem;
+      color: #a08c74;
     }
 
     @media (max-width: 720px) {
@@ -215,8 +316,15 @@
       <h2>Find your fit</h2>
       <p class="section-intro">
         Answer a few quick questions about your pet. Change any answer any time —
-        the picture and price update instantly.
+        the picture and price update instantly. Have more than one pet? Add them
+        below and switch between profiles freely.
       </p>
+
+      <div class="pet-tabs" id="pet-tabs"></div>
+      <div class="pet-name-row">
+        <label for="pet-name-input">Pet's name (optional)</label>
+        <input type="text" id="pet-name-input" placeholder="e.g. Mochi" />
+      </div>
 
       <div class="quiz-layout">
 
@@ -259,7 +367,29 @@
           </div>
 
           <div class="question">
-            <label class="q-label"><span class="q-num">4.</span>Which plan sounds right?</label>
+            <label class="q-label">
+              <span class="q-num">4.</span>When did you adopt them?
+              <span class="q-optional">(optional)</span>
+              <span class="info-icon" title="Not used for pricing yet — saved for future birthday/adoption-anniversary touches and the expanded recommendation engine.">ⓘ</span>
+            </label>
+            <input type="date" class="date-input" id="adoption-date-input" />
+          </div>
+
+          <div class="question">
+            <label class="q-label">
+              <span class="q-num">5.</span>Spayed or neutered?
+              <span class="q-optional">(optional)</span>
+              <span class="info-icon" title="Not used for pricing yet — helps fine-tune the expanded recommendation engine (e.g. calorie needs) later.">ⓘ</span>
+            </label>
+            <div class="options" data-question="spayedNeutered">
+              <button type="button" class="option-btn" data-value="yes">Yes</button>
+              <button type="button" class="option-btn" data-value="no">No</button>
+              <button type="button" class="option-btn" data-value="unsure">Not sure</button>
+            </div>
+          </div>
+
+          <div class="question">
+            <label class="q-label"><span class="q-num">6.</span>Which plan sounds right?</label>
             <div class="options" data-question="tier">
               <button type="button" class="option-btn" data-value="starter">Starter</button>
               <button type="button" class="option-btn" data-value="core">Core</button>
@@ -268,7 +398,7 @@
           </div>
 
           <div class="question">
-            <label class="q-label"><span class="q-num">5.</span>Pick Two — permanent Avoid &amp; Favorite</label>
+            <label class="q-label"><span class="q-num">7.</span>Pick Two — permanent Avoid &amp; Favorite</label>
             <p id="pick-two-locked" class="pick-two-locked">Pick your pet's species and a plan above to unlock this</p>
             <div id="pick-two-body" hidden>
               <div class="pick-two-group">
@@ -299,8 +429,36 @@
   <script type="module">
     import { getStarterPrice, getCorePrice, getPremiumPriceRange } from './pricing-data.js';
 
-    const state = { species: null, size: null, coat: null, tier: null, avoids: new Set(), favorites: new Set() };
+    // --- Multi-pet data model ---
+    // Each pet holds its own full set of answers. Only one pet is
+    // "active" (shown in the quiz/photo pane) at a time; switching tabs
+    // swaps which pet's data the quiz reads from and writes to.
+    let nextPetId = 1;
+    function createPet() {
+      const id = nextPetId++;
+      return {
+        id,
+        name: `Pet ${id}`,
+        species: null,
+        size: null,
+        coat: null,
+        adoptionDate: '',
+        spayedNeutered: null,
+        tier: null,
+        avoids: new Set(),
+        favorites: new Set(),
+      };
+    }
 
+    const pets = [createPet()];
+    let activePetId = pets[0].id;
+    function getActivePet() {
+      return pets.find((p) => p.id === activePetId);
+    }
+
+    const petTabsEl = document.getElementById('pet-tabs');
+    const petNameInput = document.getElementById('pet-name-input');
+    const adoptionDateInput = document.getElementById('adoption-date-input');
     const photoBox = document.getElementById('photo-box');
     const photoCaption = document.getElementById('photo-caption');
     const livePrice = document.getElementById('live-price');
@@ -318,9 +476,6 @@
     const coatLabel = { 'short-hair': 'short-hair', 'long-hair': 'long-hair', hairless: 'hairless' };
     const tierLabel = { starter: 'Starter', core: 'Core', premium: 'Premium' };
 
-    // Pick Two limits scale with tier — Starter 1+1, Core 2+2, Premium 3+3
-    // (pawpass-brief.md Section 5). Options are flavor/category tags,
-    // scoped at the category level per the brief, not exact SKUs.
     const PICK_LIMITS = { starter: 1, core: 2, premium: 3 };
 
     // Flavor rotation genuinely differs by species (pawpass-brief.md
@@ -332,25 +487,21 @@
       cat: ['Chicken', 'Tuna/Fish', 'Salmon'],
     };
 
-    let tagsBuiltForSpecies = null;
+    // Tag button DOM is species-dependent only (two pets of the same
+    // species share identical tag labels) — click handlers always look
+    // up getActivePet() fresh, so switching pets never requires
+    // rebuilding this DOM, only re-syncing which tags show as pressed.
+    let tagsBuiltForSpecies = undefined; // undefined = never built yet
 
-    // (Re)build the Avoid/Favorite tag buttons for the current species.
-    // Only runs when species actually changes, since prior picks don't
-    // necessarily carry over to a different species' flavor vocabulary —
-    // switching species resets Pick Two selections on purpose.
     function buildTagButtons(species) {
-      state.avoids.clear();
-      state.favorites.clear();
       avoidOptions.innerHTML = '';
       favoriteOptions.innerHTML = '';
-      if (!species) {
-        tagsBuiltForSpecies = null;
-        return;
-      }
+      tagsBuiltForSpecies = species;
+      if (!species) return;
       [
-        { container: avoidOptions, set: state.avoids, other: state.favorites },
-        { container: favoriteOptions, set: state.favorites, other: state.avoids },
-      ].forEach(({ container, set, other }) => {
+        { container: avoidOptions, key: 'avoids', otherKey: 'favorites' },
+        { container: favoriteOptions, key: 'favorites', otherKey: 'avoids' },
+      ].forEach(({ container, key, otherKey }) => {
         FLAVOR_TAGS_BY_SPECIES[species].forEach((tag) => {
           const btn = document.createElement('button');
           btn.type = 'button';
@@ -359,12 +510,15 @@
           btn.setAttribute('aria-pressed', 'false');
           btn.textContent = tag;
           btn.addEventListener('click', () => {
-            const limit = PICK_LIMITS[state.tier] ?? 0;
+            const pet = getActivePet();
+            const set = pet[key];
+            const other = pet[otherKey];
+            const limit = PICK_LIMITS[pet.tier] ?? 0;
             if (set.has(tag)) {
               set.delete(tag);
             } else {
               if (set.size >= limit) {
-                pickTwoHint.textContent = `You can only pick ${limit} here for the ${tierLabel[state.tier]} plan — remove one first.`;
+                pickTwoHint.textContent = `You can only pick ${limit} here for the ${tierLabel[pet.tier]} plan — remove one first.`;
                 return;
               }
               other.delete(tag); // a flavor can't be both Avoid and Favorite at once
@@ -376,29 +530,110 @@
           container.appendChild(btn);
         });
       });
-      tagsBuiltForSpecies = species;
     }
 
-    // Wire up every option button: click selects it, marks it pressed,
-    // clears its siblings, updates state, and re-renders the live preview.
-    document.querySelectorAll('.options').forEach((group) => {
+    // Wire up every single-select option group (species/size/coat/tier/
+    // spayedNeutered): click writes onto whichever pet is currently active.
+    document.querySelectorAll('.options[data-question]').forEach((group) => {
       const question = group.dataset.question;
       group.querySelectorAll('.option-btn').forEach((btn) => {
         btn.addEventListener('click', () => {
-          group.querySelectorAll('.option-btn').forEach((b) => b.setAttribute('aria-pressed', 'false'));
-          btn.setAttribute('aria-pressed', 'true');
-          state[question] = btn.dataset.value;
+          const pet = getActivePet();
+          // If this pet's species actually changes, its Pick Two picks
+          // don't carry over (the flavor vocabulary differs by species —
+          // see FLAVOR_TAGS_BY_SPECIES) — clear them here, at the pet's
+          // own data, not just the shared tag DOM built in buildTagButtons.
+          if (question === 'species' && pet.species !== btn.dataset.value) {
+            pet.avoids.clear();
+            pet.favorites.clear();
+          }
+          pet[question] = btn.dataset.value;
           render();
         });
       });
     });
 
-    function render() {
-      const { species, size, coat, tier, avoids, favorites } = state;
+    adoptionDateInput.addEventListener('change', () => {
+      getActivePet().adoptionDate = adoptionDateInput.value;
+    });
 
-      // Pick Two: locked until species + tier are both chosen — tags
-      // depend on species (built above), limits depend on tier. Tags
-      // rebuild only when species actually changes.
+    petNameInput.addEventListener('input', () => {
+      getActivePet().name = petNameInput.value.trim() || `Pet ${activePetId}`;
+      renderPetTabs();
+    });
+
+    function addPet() {
+      const pet = createPet();
+      pets.push(pet);
+      activePetId = pet.id;
+      render();
+    }
+
+    function removePet(id) {
+      if (pets.length <= 1) return; // always keep at least one pet
+      const idx = pets.findIndex((p) => p.id === id);
+      if (idx === -1) return;
+      pets.splice(idx, 1);
+      if (activePetId === id) {
+        activePetId = pets[Math.max(0, idx - 1)].id;
+      }
+      render();
+    }
+
+    function switchPet(id) {
+      activePetId = id;
+      render();
+    }
+
+    function renderPetTabs() {
+      petTabsEl.innerHTML = '';
+      pets.forEach((pet) => {
+        const tab = document.createElement('button');
+        tab.type = 'button';
+        tab.className = 'pet-tab';
+        tab.setAttribute('aria-current', pet.id === activePetId ? 'true' : 'false');
+        const emoji = pet.species ? speciesEmoji[pet.species] : '🐾';
+        tab.innerHTML = `${emoji} ${pet.name}`;
+        if (pets.length > 1) {
+          const remove = document.createElement('span');
+          remove.className = 'remove-pet';
+          remove.textContent = '✕';
+          remove.addEventListener('click', (e) => {
+            e.stopPropagation();
+            removePet(pet.id);
+          });
+          tab.appendChild(remove);
+        }
+        tab.addEventListener('click', () => switchPet(pet.id));
+        petTabsEl.appendChild(tab);
+      });
+      const addBtn = document.createElement('button');
+      addBtn.type = 'button';
+      addBtn.className = 'add-pet-btn';
+      addBtn.textContent = '+ Add pet';
+      addBtn.addEventListener('click', addPet);
+      petTabsEl.appendChild(addBtn);
+    }
+
+    function render() {
+      const pet = getActivePet();
+      const { species, size, coat, tier, avoids, favorites } = pet;
+
+      renderPetTabs();
+      petNameInput.value = pet.name.match(/^Pet \d+$/) ? '' : pet.name;
+      adoptionDateInput.value = pet.adoptionDate || '';
+
+      // Sync every single-select group's pressed state from the active
+      // pet — needed because switching pets doesn't go through a click.
+      document.querySelectorAll('.options[data-question]').forEach((group) => {
+        const question = group.dataset.question;
+        group.querySelectorAll('.option-btn').forEach((btn) => {
+          btn.setAttribute('aria-pressed', pet[question] === btn.dataset.value ? 'true' : 'false');
+        });
+      });
+
+      // Pick Two: tag DOM is species-dependent only; rebuild when the
+      // active pet's species differs from what's currently built.
       if (species !== tagsBuiltForSpecies) {
         buildTagButtons(species);
       }
@@ -446,10 +681,10 @@
       if (size) parts.push(sizeLabel[size]);
       if (coat) parts.push(coatLabel[coat]);
       photoCaption.textContent = parts.length
-        ? parts.join(' · ')
+        ? `${pet.name} · ${parts.join(' · ')}`
         : "Pick your pet's profile to begin";
 
-      // Price only computes once all three profile answers are in —
+      // Price only computes once species/size/coat/tier are all in —
       // reuses the exact same pricing-data.js functions as index.html,
       // so this can never show a different number for the same profile.
       if (species && size && coat && tier) {
@@ -466,9 +701,11 @@
         }
         livePrice.innerHTML = `${text}<span>${tierLabel[tier]} · ${parts.join(' · ')}</span>`;
       } else {
-        livePrice.innerHTML = `—<span>Answer all 4 questions to see your price</span>`;
+        livePrice.innerHTML = `—<span>Answer the questions above to see your price</span>`;
       }
     }
+
+    render();
   </script>
 </body>
 </html>
