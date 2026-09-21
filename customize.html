@@ -101,6 +101,45 @@
       font-size: 0.75rem;
     }
 
+    .step-dots {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 24px;
+    }
+
+    .step-dot {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 1.5px solid #e4d9c4;
+      background-color: #fffdf9;
+      color: #a08c74;
+      font-size: 0.7rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+
+    .step-dot:hover {
+      border-color: #c8b48c;
+    }
+
+    .step-dot.answered {
+      border-color: #8a6d3b;
+      color: #8a6d3b;
+    }
+
+    .step-dot.current {
+      background-color: #4a3f35;
+      border-color: #4a3f35;
+      color: #fffdf9;
+    }
+
     .quiz-layout {
       display: grid;
       grid-template-columns: 300px 1fr;
@@ -744,6 +783,12 @@
         <button type="button" class="back-link" id="start-over-btn">🗑 Start over</button>
       </p>
 
+      <!-- Always-visible step navigation — jump directly to any question
+           from anywhere, including straight from the results screen,
+           instead of only being able to step Back one question at a
+           time after "Edit your answers". -->
+      <div class="step-dots" id="step-dots"></div>
+
       <div class="quiz-layout">
 
         <!-- Photo pane: side-by-side on desktop, stacks above the quiz on mobile -->
@@ -783,7 +828,7 @@
             </div>
           </div>
 
-          <div class="question">
+          <div class="question" data-question="breed">
             <label class="q-label">
               <span class="q-num">3.</span>Breed <span class="q-optional">(optional)</span>
               <button type="button" class="info-icon" data-info="Purely a care-tip bonus layer — it never changes price or packing. Picking a breed pre-fills a typical coat below, which you can still change. Any breed not on this list falls back to the size/coat profile you pick.">ⓘ</button>
@@ -803,7 +848,7 @@
             </div>
           </div>
 
-          <div class="question">
+          <div class="question" data-question="weightKg">
             <label class="q-label">
               <span class="q-num">5.</span>Weight (kg)
               <button type="button" class="info-icon" data-info="Used for weight/obesity guidance (adult pets) and the growth chart (puppies/kittens). Not used for pricing.">ⓘ</button>
@@ -811,7 +856,7 @@
             <input type="number" class="number-input" id="weight-input" min="0" step="0.1" placeholder="e.g. 12.5" />
           </div>
 
-          <div class="question">
+          <div class="question" data-question="dob">
             <label class="q-label">
               <span class="q-num">6.</span>Date of birth <span class="q-optional">(optional, preferred)</span>
               <button type="button" class="info-icon" data-info="Primary source for age-based recommendations (life stage, growth chart). If unknown, adoption date below is used as a fallback estimate.">ⓘ</button>
@@ -819,7 +864,7 @@
             <input type="date" class="date-input" id="dob-input" />
           </div>
 
-          <div class="question">
+          <div class="question" data-question="adoptionDate">
             <label class="q-label">
               <span class="q-num">7.</span>When did you adopt them? <span class="q-optional">(optional)</span>
               <button type="button" class="info-icon" data-info="Used as a fallback to estimate age only if date of birth above is unknown — assumes ~10 weeks old at adoption, a typical shelter age.">ⓘ</button>
@@ -827,7 +872,7 @@
             <input type="date" class="date-input" id="adoption-date-input" />
           </div>
 
-          <div class="question">
+          <div class="question" data-question="spayedNeutered">
             <label class="q-label">
               <span class="q-num">8.</span>Spayed or neutered? <span class="q-optional">(optional)</span>
               <button type="button" class="info-icon" data-info="Not used for pricing yet — helps fine-tune the recommendation engine (e.g. calorie needs) as it's built out further.">ⓘ</button>
@@ -1240,6 +1285,26 @@
     // style flow" the project's UX memory calls for, replacing the old
     // long-scroll layout where all 10 were visible at once.
     const stepEls = [...document.querySelectorAll('.quiz-pane > .question')];
+
+    // Always-visible step-jump dots — one per question, clickable from
+    // anywhere (including directly from the results screen) to jump
+    // straight to that question, instead of only being able to step
+    // Back one at a time after "Edit your answers".
+    const stepDotsEl = document.getElementById('step-dots');
+    stepEls.forEach((el, i) => {
+      const dot = document.createElement('button');
+      dot.type = 'button';
+      dot.className = 'step-dot';
+      dot.textContent = String(i + 1);
+      dot.title = el.querySelector('.q-label')?.textContent.trim() || `Question ${i + 1}`;
+      dot.addEventListener('click', () => {
+        const pet = getActivePet();
+        pet.currentStep = i;
+        pet.showResults = false;
+        render();
+      });
+      stepDotsEl.appendChild(dot);
+    });
 
     const speciesEmoji = { dog: '🐶', cat: '🐱' };
     const sizeLabel = { small: 'Small', medium: 'Medium', large: 'Large' };
@@ -1759,6 +1824,21 @@
       petTabsEl.appendChild(addBtn);
     }
 
+    function isStepAnswered(pet, i) {
+      const question = stepEls[i].dataset.question;
+      if (question) return pet[question] != null && pet[question] !== '';
+      // Pick Two (step 10) has no single data-question — treat any
+      // Avoid/Favorite pick as "answered" for the dot indicator.
+      return pet.avoids.size > 0 || pet.favorites.size > 0;
+    }
+
+    function renderStepDots(pet) {
+      stepDotsEl.querySelectorAll('.step-dot').forEach((dot, i) => {
+        dot.classList.toggle('current', !pet.showResults && i === pet.currentStep);
+        dot.classList.toggle('answered', isStepAnswered(pet, i));
+      });
+    }
+
     function renderStepper(pet) {
       if (pet.showResults) {
         stepEls.forEach((el) => { el.hidden = true; });
@@ -1802,6 +1882,7 @@
 
       renderPetTabs();
       renderStepper(pet);
+      renderStepDots(pet);
       petNameInput.value = pet.name.match(/^Pet \d+$/) ? '' : pet.name;
       weightInput.value = pet.weightKg ?? '';
       dobInput.value = pet.dob || '';
