@@ -109,6 +109,11 @@
       margin-bottom: 24px;
     }
 
+    /* Same [hidden]-vs-own-display-rule issue as .quiz-layout above. */
+    .step-dots[hidden] {
+      display: none;
+    }
+
     .step-dot {
       width: 26px;
       height: 26px;
@@ -140,11 +145,76 @@
       color: #fffdf9;
     }
 
+    .review-toggle-btn {
+      display: block;
+      margin: 0 auto 20px;
+    }
+
+    .review-toggle-btn[hidden] {
+      display: none;
+    }
+
+    .review-table-wrap {
+      overflow-x: auto; /* many pets can make this wider than the card — scroll, don't break layout */
+    }
+
+    .review-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    .review-table th,
+    .review-table td {
+      padding: 10px 14px;
+      text-align: left;
+      border-bottom: 1px solid #f5f0e6;
+      white-space: nowrap;
+    }
+
+    .review-table thead th {
+      color: #4a3f35;
+      font-size: 0.9rem;
+    }
+
+    .review-table tbody th {
+      color: #a08c74;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .review-edit-btn {
+      display: block;
+      margin-top: 4px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1.5px solid #e4d9c4;
+      background-color: #fffdf9;
+      color: #8a6d3b;
+      font-size: 0.7rem;
+      cursor: pointer;
+      font-weight: 400;
+    }
+
+    .review-edit-btn:hover {
+      border-color: #c8b48c;
+      background-color: #f5f0e6;
+    }
+
     .quiz-layout {
       display: grid;
       grid-template-columns: 300px 1fr;
       gap: 32px;
       align-items: start;
+    }
+
+    /* The [hidden] attribute alone can't hide this — the browser's
+       built-in [hidden]{display:none} is a low-priority user-agent
+       rule, and .quiz-layout's own `display: grid` above (an author
+       rule) always wins over it regardless of specificity or order.
+       Needed once .quiz-layout started being toggled (all-pets review). */
+    .quiz-layout[hidden] {
+      display: none;
     }
 
     /* Photo pane — sits beside the quiz on desktop/web */
@@ -543,6 +613,17 @@
       text-align: center;
     }
 
+    /* Same [hidden]-vs-own-display-rule conflict as .quiz-layout/.step-
+       dots below — this one predates today: recDental/recExercise/
+       recSecret/recWeight all set .hidden based on whether they should
+       show, but .rec-item's own `display: flex` (an author rule)
+       always won over the browser's [hidden]{display:none} default,
+       meaning these rows likely never actually hid, possibly showing
+       empty/stale content when they shouldn't have appeared at all. */
+    .rec-item[hidden] {
+      display: none;
+    }
+
     .rec-item {
       display: flex;
       gap: 10px;
@@ -773,6 +854,7 @@
       </p>
 
       <div class="pet-tabs" id="pet-tabs"></div>
+      <button type="button" class="back-link review-toggle-btn" id="review-all-btn" hidden>📋 Review all pets</button>
       <div class="pet-name-row">
         <label for="pet-name-input">Pet's name (optional)</label>
         <input type="text" id="pet-name-input" placeholder="e.g. Mochi" />
@@ -1063,6 +1145,16 @@
         </div>
       </div>
 
+      <!-- All-pets review: a side-by-side comparison table, shown
+           instead of .quiz-layout when toggled — useful once more than
+           one pet exists, to compare profiles/prices/picks at a glance
+           and jump directly into editing any of them. -->
+      <div id="all-pets-review" hidden>
+        <div class="review-table-wrap">
+          <table class="review-table" id="review-table"></table>
+        </div>
+      </div>
+
       <div class="disclaimer">
         <strong>ⓘ Please note:</strong> everything shown above — price, dental,
         exercise, and weight/growth guidance — is informational only, not
@@ -1222,9 +1314,17 @@
       return pets.find((p) => p.id === activePetId);
     }
 
+    // Page-level (not per-pet) — whether the all-pets comparison table
+    // is showing instead of the active pet's quiz/results view.
+    let showAllPetsReview = false;
+
     const petTabsEl = document.getElementById('pet-tabs');
     const petNameInput = document.getElementById('pet-name-input');
     const startOverBtn = document.getElementById('start-over-btn');
+    const reviewAllBtn = document.getElementById('review-all-btn');
+    const allPetsReview = document.getElementById('all-pets-review');
+    const reviewTable = document.getElementById('review-table');
+    const quizLayoutEl = document.querySelector('.quiz-layout');
     const breedSelect = document.getElementById('breed-select');
     const breedCustomInput = document.getElementById('breed-custom-input');
     const weightInput = document.getElementById('weight-input');
@@ -1313,6 +1413,27 @@
     const lifeStageLabel = { puppy: 'Puppy', kitten: 'Kitten', adult: 'Adult', senior: 'Senior' };
 
     const PICK_LIMITS = { starter: 1, core: 2, premium: 3 };
+
+    // Shared by the live price display and the all-pets review table —
+    // one place formatting a pet's price text, both reading the exact
+    // same pricing-data.js functions either way uses.
+    function getPetPriceText(pet) {
+      const { species, size, coat, tier } = pet;
+      if (!(species && size && coat && tier)) return null;
+      if (tier === 'starter') {
+        const price = getStarterPrice(species, size);
+        return price != null ? `~${price} THB / month` : 'Combination not available yet';
+      }
+      if (tier === 'core') {
+        const price = getCorePrice(species, size, coat);
+        return price != null ? `~${price} THB / month` : 'Combination not available yet';
+      }
+      if (tier === 'premium') {
+        const range = getPremiumPriceRange(species, size, coat);
+        return range ? `~${range.min}–${range.max} THB / month` : 'Combination not available yet';
+      }
+      return null;
+    }
 
     // FLAVOR_TAGS_BY_SPECIES now comes from catalog-data.js (imported
     // above) — it used to be a local copy here, which is exactly how
@@ -1776,6 +1897,58 @@
       render();
     });
 
+    reviewAllBtn.addEventListener('click', () => {
+      showAllPetsReview = !showAllPetsReview;
+      render();
+    });
+
+    function renderAllPetsReview() {
+      reviewAllBtn.hidden = pets.length <= 1;
+      quizLayoutEl.hidden = showAllPetsReview;
+      stepDotsEl.hidden = showAllPetsReview;
+      allPetsReview.hidden = !showAllPetsReview;
+      reviewAllBtn.textContent = showAllPetsReview ? '← Back to editing' : '📋 Review all pets';
+      if (!showAllPetsReview) return;
+
+      const fields = [
+        { label: 'Species', get: (p) => (p.species ? (p.species === 'dog' ? '🐶 Dog' : '🐱 Cat') : '—') },
+        { label: 'Size', get: (p) => (p.size ? sizeLabel[p.size] : '—') },
+        { label: 'Coat', get: (p) => (p.coat ? coatLabel[p.coat] : '—') },
+        { label: 'Breed', get: (p) => p.breed || '—' },
+        { label: 'Plan', get: (p) => (p.tier ? tierLabel[p.tier] : '—') },
+        { label: 'Price', get: (p) => getPetPriceText(p) || '—' },
+        { label: 'Avoid', get: (p) => (p.avoids.size ? [...p.avoids].join(', ') : '—') },
+        { label: 'Favorite', get: (p) => (p.favorites.size ? [...p.favorites].join(', ') : '—') },
+      ];
+
+      const headerCells = pets.map((p) => `
+        <th>
+          ${p.name}
+          <button type="button" class="review-edit-btn" data-pet-id="${p.id}">Edit →</button>
+        </th>
+      `).join('');
+
+      const bodyRows = fields.map((field) => `
+        <tr>
+          <th>${field.label}</th>
+          ${pets.map((p) => `<td>${field.get(p)}</td>`).join('')}
+        </tr>
+      `).join('');
+
+      reviewTable.innerHTML = `
+        <thead><tr><th></th>${headerCells}</tr></thead>
+        <tbody>${bodyRows}</tbody>
+      `;
+
+      reviewTable.querySelectorAll('.review-edit-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          activePetId = Number(btn.dataset.petId);
+          showAllPetsReview = false;
+          render();
+        });
+      });
+    }
+
     function removePet(id) {
       if (pets.length <= 1) return; // always keep at least one pet
       const idx = pets.findIndex((p) => p.id === id);
@@ -1883,6 +2056,7 @@
       renderPetTabs();
       renderStepper(pet);
       renderStepDots(pet);
+      renderAllPetsReview();
       petNameInput.value = pet.name.match(/^Pet \d+$/) ? '' : pet.name;
       weightInput.value = pet.weightKg ?? '';
       dobInput.value = pet.dob || '';
@@ -2005,18 +2179,7 @@
       // reuses the exact same pricing-data.js functions as index.html,
       // so this can never show a different number for the same profile.
       if (species && size && coat && tier) {
-        let text = '';
-        if (tier === 'starter') {
-          const price = getStarterPrice(species, size);
-          text = price != null ? `~${price} THB / month` : "Combination not available yet";
-        } else if (tier === 'core') {
-          const price = getCorePrice(species, size, coat);
-          text = price != null ? `~${price} THB / month` : "Combination not available yet";
-        } else if (tier === 'premium') {
-          const range = getPremiumPriceRange(species, size, coat);
-          text = range ? `~${range.min}–${range.max} THB / month` : "Combination not available yet";
-        }
-        livePrice.innerHTML = `${text}<span>${tierLabel[tier]} · ${parts.join(' · ')}</span>`;
+        livePrice.innerHTML = `${getPetPriceText(pet)}<span>${tierLabel[tier]} · ${parts.join(' · ')}</span>`;
       } else {
         livePrice.innerHTML = `—<span>Answer the questions above to see your price</span>`;
       }
