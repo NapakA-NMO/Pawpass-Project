@@ -88,6 +88,19 @@
       text-align: center;
     }
 
+    .autosave-note {
+      text-align: center;
+      font-size: 0.75rem;
+      color: #a08c74;
+      margin: 0 0 24px;
+      line-height: 1.6;
+    }
+
+    .autosave-note .back-link {
+      margin-left: 6px;
+      font-size: 0.75rem;
+    }
+
     .quiz-layout {
       display: grid;
       grid-template-columns: 300px 1fr;
@@ -725,6 +738,11 @@
         <label for="pet-name-input">Pet's name (optional)</label>
         <input type="text" id="pet-name-input" placeholder="e.g. Mochi" />
       </div>
+      <p class="autosave-note">
+        Saved automatically in this browser — reloading won't lose your answers
+        (uploaded photos are the exception; you'll need to re-add those).
+        <button type="button" class="back-link" id="start-over-btn">🗑 Start over</button>
+      </p>
 
       <div class="quiz-layout">
 
@@ -1100,14 +1118,68 @@
       };
     }
 
-    const pets = [createPet()];
-    let activePetId = pets[0].id;
+    // --- Local persistence ---
+    // Saves pet state to localStorage so an accidental reload (or
+    // closing the tab) doesn't lose everything — a real risk mid-demo.
+    // Deliberately NOT persisted: photoUrl (an object URL, invalid
+    // after reload regardless — storing the image as base64 instead
+    // would risk blowing localStorage's ~5-10MB quota with a few
+    // pets' worth of photos) and pendingAdvanceTimeout/_lastPhotoSignature
+    // (transient UI state, meaningless across a reload).
+    const STORAGE_KEY = 'pawpass-quiz-state-v1';
+
+    function serializePet(pet) {
+      const { avoids, favorites, photoUrl, pendingAdvanceTimeout, _lastPhotoSignature, ...rest } = pet;
+      return { ...rest, avoids: [...avoids], favorites: [...favorites] };
+    }
+
+    function deserializePet(data) {
+      return {
+        ...data,
+        avoids: new Set(data.avoids || []),
+        favorites: new Set(data.favorites || []),
+        photoUrl: null,
+        pendingAdvanceTimeout: null,
+        _lastPhotoSignature: null,
+      };
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          nextPetId, activePetId, pets: pets.map(serializePet),
+        }));
+      } catch (e) {
+        // Quota exceeded, private browsing, or storage disabled — this
+        // is a convenience feature, not critical, so fail silently.
+      }
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return null;
+        const data = JSON.parse(raw);
+        if (!data || !Array.isArray(data.pets) || !data.pets.length) return null;
+        return data;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    const savedState = loadState();
+    const pets = savedState ? savedState.pets.map(deserializePet) : [createPet()];
+    if (savedState) nextPetId = savedState.nextPetId;
+    let activePetId = savedState && pets.some((p) => p.id === savedState.activePetId)
+      ? savedState.activePetId
+      : pets[0].id;
     function getActivePet() {
       return pets.find((p) => p.id === activePetId);
     }
 
     const petTabsEl = document.getElementById('pet-tabs');
     const petNameInput = document.getElementById('pet-name-input');
+    const startOverBtn = document.getElementById('start-over-btn');
     const breedSelect = document.getElementById('breed-select');
     const breedCustomInput = document.getElementById('breed-custom-input');
     const weightInput = document.getElementById('weight-input');
@@ -1627,6 +1699,18 @@
       render();
     }
 
+    startOverBtn.addEventListener('click', () => {
+      if (!confirm('Clear all saved pets and start over? This can\'t be undone.')) return;
+      pets.forEach((pet) => {
+        if (pet.photoUrl) URL.revokeObjectURL(pet.photoUrl);
+        if (pet.pendingAdvanceTimeout) clearTimeout(pet.pendingAdvanceTimeout);
+      });
+      pets.length = 0;
+      pets.push(createPet());
+      activePetId = pets[0].id;
+      render();
+    });
+
     function removePet(id) {
       if (pets.length <= 1) return; // always keep at least one pet
       const idx = pets.findIndex((p) => p.id === id);
@@ -1865,6 +1949,7 @@
       }
 
       renderRecommendations(pet, species, size);
+      saveState();
     }
 
     function renderFeedbackHistory(pet) {
