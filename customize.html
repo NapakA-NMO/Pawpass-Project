@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Answer a few quick questions about your pet and see your personalized PawPass box and price, live." />
+  <meta name="description" content="Answer a few quick questions about your pet and see your personalized PawPass box, price, and care recommendations, live." />
   <title>PawPass — Find Your Fit</title>
   <link rel="stylesheet" href="styles.css" />
   <style>
@@ -213,7 +213,9 @@
       font-weight: 600;
     }
 
-    .date-input {
+    .date-input,
+    .number-input,
+    .breed-select {
       margin-top: 10px;
       padding: 10px 14px;
       border-radius: 10px;
@@ -221,6 +223,8 @@
       background-color: #fffdf9;
       color: #4a3f35;
       font-size: 0.9rem;
+      width: 100%;
+      max-width: 260px;
     }
 
     .q-optional {
@@ -305,6 +309,53 @@
       color: #7a6c5b;
       line-height: 1.5;
     }
+
+    /* Recommendations */
+    .recommendations {
+      margin-top: 32px;
+      padding-top: 28px;
+      border-top: 1px solid #ece2cd;
+    }
+
+    .rec-empty-note {
+      font-size: 0.85rem;
+      color: #a08c74;
+      font-style: italic;
+      text-align: center;
+    }
+
+    .rec-item {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 12px 0;
+      border-bottom: 1px solid #f5f0e6;
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+
+    .rec-item:last-child {
+      border-bottom: none;
+    }
+
+    .rec-icon {
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+
+    .rec-item strong {
+      display: block;
+      font-size: 0.85rem;
+      margin-bottom: 2px;
+    }
+
+    .rec-source-tag {
+      display: inline-block;
+      margin-left: 6px;
+      font-size: 0.7rem;
+      color: #a08c74;
+      font-weight: 400;
+    }
   </style>
 </head>
 <body>
@@ -316,8 +367,8 @@
       <h2>Find your fit</h2>
       <p class="section-intro">
         Answer a few quick questions about your pet. Change any answer any time —
-        the picture and price update instantly. Have more than one pet? Add them
-        below and switch between profiles freely.
+        the picture, price, and recommendations update instantly. Have more than
+        one pet? Add them below and switch between profiles freely.
       </p>
 
       <div class="pet-tabs" id="pet-tabs"></div>
@@ -368,18 +419,42 @@
 
           <div class="question">
             <label class="q-label">
-              <span class="q-num">4.</span>When did you adopt them?
-              <span class="q-optional">(optional)</span>
-              <span class="info-icon" title="Not used for pricing yet — saved for future birthday/adoption-anniversary touches and the expanded recommendation engine.">ⓘ</span>
+              <span class="q-num">4.</span>Breed <span class="q-optional">(optional)</span>
+              <span class="info-icon" title="Purely a care-tip bonus layer — it never changes price or packing. Any breed not on this list falls back to the size/coat profile above.">ⓘ</span>
+            </label>
+            <select class="breed-select" id="breed-select">
+              <option value="">Pick species first</option>
+            </select>
+          </div>
+
+          <div class="question">
+            <label class="q-label">
+              <span class="q-num">5.</span>Weight (kg)
+              <span class="info-icon" title="Used for weight/obesity guidance (adult pets) and the growth chart (puppies/kittens). Not used for pricing.">ⓘ</span>
+            </label>
+            <input type="number" class="number-input" id="weight-input" min="0" step="0.1" placeholder="e.g. 12.5" />
+          </div>
+
+          <div class="question">
+            <label class="q-label">
+              <span class="q-num">6.</span>Date of birth <span class="q-optional">(optional, preferred)</span>
+              <span class="info-icon" title="Primary source for age-based recommendations (life stage, growth chart). If unknown, adoption date below is used as a fallback estimate.">ⓘ</span>
+            </label>
+            <input type="date" class="date-input" id="dob-input" />
+          </div>
+
+          <div class="question">
+            <label class="q-label">
+              <span class="q-num">7.</span>When did you adopt them? <span class="q-optional">(optional)</span>
+              <span class="info-icon" title="Used as a fallback to estimate age only if date of birth above is unknown — assumes ~10 weeks old at adoption, a typical shelter age.">ⓘ</span>
             </label>
             <input type="date" class="date-input" id="adoption-date-input" />
           </div>
 
           <div class="question">
             <label class="q-label">
-              <span class="q-num">5.</span>Spayed or neutered?
-              <span class="q-optional">(optional)</span>
-              <span class="info-icon" title="Not used for pricing yet — helps fine-tune the expanded recommendation engine (e.g. calorie needs) later.">ⓘ</span>
+              <span class="q-num">8.</span>Spayed or neutered? <span class="q-optional">(optional)</span>
+              <span class="info-icon" title="Not used for pricing yet — helps fine-tune the recommendation engine (e.g. calorie needs) as it's built out further.">ⓘ</span>
             </label>
             <div class="options" data-question="spayedNeutered">
               <button type="button" class="option-btn" data-value="yes">Yes</button>
@@ -389,7 +464,7 @@
           </div>
 
           <div class="question">
-            <label class="q-label"><span class="q-num">6.</span>Which plan sounds right?</label>
+            <label class="q-label"><span class="q-num">9.</span>Which plan sounds right?</label>
             <div class="options" data-question="tier">
               <button type="button" class="option-btn" data-value="starter">Starter</button>
               <button type="button" class="option-btn" data-value="core">Core</button>
@@ -398,7 +473,7 @@
           </div>
 
           <div class="question">
-            <label class="q-label"><span class="q-num">7.</span>Pick Two — permanent Avoid &amp; Favorite</label>
+            <label class="q-label"><span class="q-num">10.</span>Pick Two — permanent Avoid &amp; Favorite</label>
             <p id="pick-two-locked" class="pick-two-locked">Pick your pet's species and a plan above to unlock this</p>
             <div id="pick-two-body" hidden>
               <div class="pick-two-group">
@@ -416,11 +491,42 @@
         </div>
       </div>
 
+      <!-- Recommendations: the expanded recommendation engine's results,
+           right where a visitor would actually read a health-adjacent
+           claim, per the vet disclaimer placement rule established
+           earlier for the pricing section. -->
+      <div class="recommendations">
+        <h2>Recommendations</h2>
+        <p class="rec-empty-note" id="rec-empty-note">
+          Answer species, size, and either a date of birth or adoption date above
+          to see personalized care recommendations here.
+        </p>
+        <div id="rec-body" hidden>
+          <div class="rec-item">
+            <span class="rec-icon">📋</span>
+            <div><strong>Life stage</strong><span id="rec-life-stage"></span></div>
+          </div>
+          <div class="rec-item" id="rec-dental" hidden>
+            <span class="rec-icon">🦷</span>
+            <div><strong>Dental care</strong><span id="rec-dental-text"></span></div>
+          </div>
+          <div class="rec-item" id="rec-exercise" hidden>
+            <span class="rec-icon">🏃</span>
+            <div><strong>Exercise<span class="rec-source-tag" id="rec-exercise-source"></span></strong><span id="rec-exercise-text"></span></div>
+          </div>
+          <div class="rec-item" id="rec-weight" hidden>
+            <span class="rec-icon">⚖️</span>
+            <div><strong id="rec-weight-label">Weight guidance</strong><span id="rec-weight-text"></span></div>
+          </div>
+        </div>
+      </div>
+
       <div class="disclaimer">
-        <strong>ⓘ Please note:</strong> the profile and price shown above are
-        informational only, not veterinary diagnosis or a formal recommendation.
-        Premium's Quarterly Pet Wellness Review is non-diagnostic lifestyle advice —
-        always consult a vet for your pet's actual health needs.
+        <strong>ⓘ Please note:</strong> everything shown above — price, dental,
+        exercise, and weight/growth guidance — is informational only, not
+        veterinary diagnosis or a formal recommendation. Premium's Quarterly Pet
+        Wellness Review is non-diagnostic lifestyle advice — always consult a vet
+        for your pet's actual health needs.
       </div>
     </section>
 
@@ -428,6 +534,10 @@
 
   <script type="module">
     import { getStarterPrice, getCorePrice, getPremiumPriceRange } from './pricing-data.js';
+    import {
+      TIER1_BREEDS, getAgeMonths, getLifeStage, getDentalRisk, DENTAL_RECOMMENDATION,
+      getExerciseTip, getObesityGuidance, getGrowthGuidance,
+    } from './recommendations-data.js';
 
     // --- Multi-pet data model ---
     // Each pet holds its own full set of answers. Only one pet is
@@ -442,11 +552,19 @@
         species: null,
         size: null,
         coat: null,
+        breed: null,
+        weightKg: null,
+        dob: '',
         adoptionDate: '',
         spayedNeutered: null,
         tier: null,
         avoids: new Set(),
         favorites: new Set(),
+        // Post-order portion feedback (Section 7) — always empty in this
+        // build, since the post-order feedback flow itself is still
+        // queued. Wired here so getObesityGuidance's feedback-override
+        // path is ready the moment that flow exists.
+        feedbackHistory: [],
       };
     }
 
@@ -458,6 +576,9 @@
 
     const petTabsEl = document.getElementById('pet-tabs');
     const petNameInput = document.getElementById('pet-name-input');
+    const breedSelect = document.getElementById('breed-select');
+    const weightInput = document.getElementById('weight-input');
+    const dobInput = document.getElementById('dob-input');
     const adoptionDateInput = document.getElementById('adoption-date-input');
     const photoBox = document.getElementById('photo-box');
     const photoCaption = document.getElementById('photo-caption');
@@ -470,11 +591,23 @@
     const avoidLimitLabel = document.getElementById('avoid-limit-label');
     const favoriteLimitLabel = document.getElementById('favorite-limit-label');
     const pickTwoHint = document.getElementById('pick-two-hint');
+    const recEmptyNote = document.getElementById('rec-empty-note');
+    const recBody = document.getElementById('rec-body');
+    const recLifeStage = document.getElementById('rec-life-stage');
+    const recDental = document.getElementById('rec-dental');
+    const recDentalText = document.getElementById('rec-dental-text');
+    const recExercise = document.getElementById('rec-exercise');
+    const recExerciseText = document.getElementById('rec-exercise-text');
+    const recExerciseSource = document.getElementById('rec-exercise-source');
+    const recWeight = document.getElementById('rec-weight');
+    const recWeightLabel = document.getElementById('rec-weight-label');
+    const recWeightText = document.getElementById('rec-weight-text');
 
     const speciesEmoji = { dog: '🐶', cat: '🐱' };
     const sizeLabel = { small: 'Small', medium: 'Medium', large: 'Large' };
     const coatLabel = { 'short-hair': 'short-hair', 'long-hair': 'long-hair', hairless: 'hairless' };
     const tierLabel = { starter: 'Starter', core: 'Core', premium: 'Premium' };
+    const lifeStageLabel = { puppy: 'Puppy', kitten: 'Kitten', adult: 'Adult', senior: 'Senior' };
 
     const PICK_LIMITS = { starter: 1, core: 2, premium: 3 };
 
@@ -487,11 +620,13 @@
       cat: ['Chicken', 'Tuna/Fish', 'Salmon'],
     };
 
-    // Tag button DOM is species-dependent only (two pets of the same
-    // species share identical tag labels) — click handlers always look
-    // up getActivePet() fresh, so switching pets never requires
-    // rebuilding this DOM, only re-syncing which tags show as pressed.
+    // Tag button DOM and breed <select> options are both species-
+    // dependent only (shared across any pets of the same species) —
+    // click/change handlers always look up getActivePet() fresh, so
+    // switching pets never requires rebuilding either, only re-syncing
+    // which value is currently selected.
     let tagsBuiltForSpecies = undefined; // undefined = never built yet
+    let breedOptionsBuiltForSpecies = undefined;
 
     function buildTagButtons(species) {
       avoidOptions.innerHTML = '';
@@ -532,6 +667,22 @@
       });
     }
 
+    function buildBreedOptions(species) {
+      breedSelect.innerHTML = '';
+      breedOptionsBuiltForSpecies = species;
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = species ? 'Not sure / prefer not to say' : 'Pick species first';
+      breedSelect.appendChild(placeholder);
+      if (!species) return;
+      TIER1_BREEDS[species].forEach((breed) => {
+        const opt = document.createElement('option');
+        opt.value = breed;
+        opt.textContent = breed;
+        breedSelect.appendChild(opt);
+      });
+    }
+
     // Wire up every single-select option group (species/size/coat/tier/
     // spayedNeutered): click writes onto whichever pet is currently active.
     document.querySelectorAll('.options[data-question]').forEach((group) => {
@@ -539,13 +690,14 @@
       group.querySelectorAll('.option-btn').forEach((btn) => {
         btn.addEventListener('click', () => {
           const pet = getActivePet();
-          // If this pet's species actually changes, its Pick Two picks
-          // don't carry over (the flavor vocabulary differs by species —
-          // see FLAVOR_TAGS_BY_SPECIES) — clear them here, at the pet's
-          // own data, not just the shared tag DOM built in buildTagButtons.
+          // If this pet's species actually changes, Pick Two picks and
+          // breed don't carry over (both depend on species — flavor
+          // vocabulary and the Tier-1 breed list) — clear them at the
+          // pet's own data, not just the shared DOM built above.
           if (question === 'species' && pet.species !== btn.dataset.value) {
             pet.avoids.clear();
             pet.favorites.clear();
+            pet.breed = null;
           }
           pet[question] = btn.dataset.value;
           render();
@@ -553,8 +705,25 @@
       });
     });
 
+    breedSelect.addEventListener('change', () => {
+      getActivePet().breed = breedSelect.value || null;
+      render();
+    });
+
+    weightInput.addEventListener('input', () => {
+      const val = weightInput.value === '' ? null : parseFloat(weightInput.value);
+      getActivePet().weightKg = Number.isNaN(val) ? null : val;
+      render();
+    });
+
+    dobInput.addEventListener('change', () => {
+      getActivePet().dob = dobInput.value;
+      render();
+    });
+
     adoptionDateInput.addEventListener('change', () => {
       getActivePet().adoptionDate = adoptionDateInput.value;
+      render();
     });
 
     petNameInput.addEventListener('input', () => {
@@ -621,6 +790,8 @@
 
       renderPetTabs();
       petNameInput.value = pet.name.match(/^Pet \d+$/) ? '' : pet.name;
+      weightInput.value = pet.weightKg ?? '';
+      dobInput.value = pet.dob || '';
       adoptionDateInput.value = pet.adoptionDate || '';
 
       // Sync every single-select group's pressed state from the active
@@ -631,6 +802,11 @@
           btn.setAttribute('aria-pressed', pet[question] === btn.dataset.value ? 'true' : 'false');
         });
       });
+
+      if (species !== breedOptionsBuiltForSpecies) {
+        buildBreedOptions(species);
+      }
+      breedSelect.value = pet.breed || '';
 
       // Pick Two: tag DOM is species-dependent only; rebuild when the
       // active pet's species differs from what's currently built.
@@ -702,6 +878,62 @@
         livePrice.innerHTML = `${text}<span>${tierLabel[tier]} · ${parts.join(' · ')}</span>`;
       } else {
         livePrice.innerHTML = `—<span>Answer the questions above to see your price</span>`;
+      }
+
+      renderRecommendations(pet, species, size);
+    }
+
+    function renderRecommendations(pet, species, size) {
+      const age = getAgeMonths(pet.dob, pet.adoptionDate);
+      const lifeStage = species && size && age ? getLifeStage(species, size, age.ageMonths) : null;
+
+      if (!lifeStage) {
+        recEmptyNote.hidden = false;
+        recBody.hidden = true;
+        return;
+      }
+
+      recEmptyNote.hidden = true;
+      recBody.hidden = false;
+
+      const ageProxyNote = age.source === 'adoption-proxy'
+        ? ' (estimated from adoption date, assuming ~10 weeks old at adoption)'
+        : '';
+      recLifeStage.textContent = `${lifeStageLabel[lifeStage]}${ageProxyNote}`;
+
+      const dentalAtRisk = getDentalRisk(species, size, lifeStage);
+      recDental.hidden = !dentalAtRisk;
+      if (dentalAtRisk) {
+        recDentalText.textContent = `${DENTAL_RECOMMENDATION.treat}; ${DENTAL_RECOMMENDATION.supplement}.`;
+      }
+
+      const exercise = getExerciseTip(species, lifeStage, pet.breed);
+      recExercise.hidden = !exercise;
+      if (exercise) {
+        recExerciseText.textContent = exercise.text;
+        recExerciseSource.textContent = exercise.source === 'breed' ? `(${pet.breed})` : '';
+      }
+
+      if (lifeStage === 'puppy' || lifeStage === 'kitten') {
+        const growth = getGrowthGuidance(species, size, lifeStage, age.ageMonths, pet.weightKg);
+        recWeight.hidden = !growth;
+        if (growth) {
+          recWeightLabel.textContent = 'Growth chart';
+          recWeightText.textContent = growth.text;
+        }
+      } else {
+        if (pet.weightKg == null) {
+          recWeight.hidden = false;
+          recWeightLabel.textContent = 'Weight guidance';
+          recWeightText.textContent = "Enter your pet's weight above to see this.";
+        } else {
+          const obesity = getObesityGuidance(species, size, lifeStage, pet.weightKg, pet.feedbackHistory);
+          recWeight.hidden = !obesity;
+          if (obesity) {
+            recWeightLabel.textContent = 'Weight guidance';
+            recWeightText.textContent = obesity.text;
+          }
+        }
       }
     }
 
