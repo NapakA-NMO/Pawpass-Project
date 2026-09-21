@@ -356,6 +356,23 @@
       color: #a08c74;
       font-weight: 400;
     }
+
+    .reroll-btn {
+      display: block;
+      margin-top: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1.5px solid #e4d9c4;
+      background-color: #fffdf9;
+      color: #8a6d3b;
+      font-size: 0.75rem;
+      cursor: pointer;
+    }
+
+    .reroll-btn:hover {
+      border-color: #c8b48c;
+      background-color: #f5f0e6;
+    }
   </style>
 </head>
 <body>
@@ -518,6 +535,18 @@
             <span class="rec-icon">⚖️</span>
             <div><strong id="rec-weight-label">Weight guidance</strong><span id="rec-weight-text"></span></div>
           </div>
+          <div class="rec-item" id="rec-secret" hidden>
+            <span class="rec-icon">✨</span>
+            <div>
+              <strong>Secret item</strong>
+              <span id="rec-secret-text"></span>
+              <button type="button" class="reroll-btn" id="secret-reroll-btn">🎲 Try another</button>
+            </div>
+          </div>
+          <div class="rec-item" id="rec-taste-memory">
+            <span class="rec-icon">🧠</span>
+            <div><strong>Taste memory</strong><span id="rec-taste-memory-text"></span></div>
+          </div>
         </div>
       </div>
 
@@ -538,6 +567,7 @@
       TIER1_BREEDS, getAgeMonths, getLifeStage, getDentalRisk, DENTAL_RECOMMENDATION,
       getExerciseTip, getObesityGuidance, getGrowthGuidance,
     } from './recommendations-data.js';
+    import { getSecretItemPreview, getTasteMemoryExclusions } from './catalog-data.js';
 
     // --- Multi-pet data model ---
     // Each pet holds its own full set of answers. Only one pet is
@@ -562,9 +592,14 @@
         favorites: new Set(),
         // Post-order portion feedback (Section 7) — always empty in this
         // build, since the post-order feedback flow itself is still
-        // queued. Wired here so getObesityGuidance's feedback-override
-        // path is ready the moment that flow exists.
+        // queued. Wired here so getObesityGuidance's and
+        // getTasteMemoryExclusions' feedback-driven paths are ready the
+        // moment that flow exists.
         feedbackHistory: [],
+        // Bumped by the "🎲 Try another" button to deliberately change
+        // the secret-item pick's seed — otherwise the pick stays stable
+        // across re-renders (see catalog-data.js's hashSeed comment).
+        secretItemRerollCount: 0,
       };
     }
 
@@ -602,6 +637,10 @@
     const recWeight = document.getElementById('rec-weight');
     const recWeightLabel = document.getElementById('rec-weight-label');
     const recWeightText = document.getElementById('rec-weight-text');
+    const recSecret = document.getElementById('rec-secret');
+    const recSecretText = document.getElementById('rec-secret-text');
+    const secretRerollBtn = document.getElementById('secret-reroll-btn');
+    const recTasteMemoryText = document.getElementById('rec-taste-memory-text');
 
     const speciesEmoji = { dog: '🐶', cat: '🐱' };
     const sizeLabel = { small: 'Small', medium: 'Medium', large: 'Large' };
@@ -707,6 +746,11 @@
 
     breedSelect.addEventListener('change', () => {
       getActivePet().breed = breedSelect.value || null;
+      render();
+    });
+
+    secretRerollBtn.addEventListener('click', () => {
+      getActivePet().secretItemRerollCount += 1;
       render();
     });
 
@@ -935,6 +979,28 @@
           }
         }
       }
+
+      // Secret item: static preview example, gated on species + tier —
+      // same gate as Pick Two, since it's a box-content feature that
+      // only means something once a plan is chosen. Not a real quarterly
+      // cycle (no order/subscription lifecycle exists to track quarters
+      // against) — framed explicitly as a preview, confirmed with the user.
+      const secret = pet.tier
+        ? getSecretItemPreview(species, pet.avoids, `${pet.id}-${pet.secretItemRerollCount}`)
+        : null;
+      recSecret.hidden = !secret;
+      if (secret) {
+        recSecretText.textContent = ` e.g. ${secret.name} (${secret.category}) — a preview example, not a guaranteed pick.`;
+      }
+
+      // Taste memory: architecture-only for now — feedbackHistory is
+      // always empty until the post-order feedback flow (still queued)
+      // exists, so this always reports "no feedback yet" today. Shown
+      // whenever the rest of the recommendations body is shown.
+      const exclusions = getTasteMemoryExclusions(pet.feedbackHistory);
+      recTasteMemoryText.textContent = exclusions.length
+        ? ` Quietly excluding: ${exclusions.join(', ')} (repeated dislikes).`
+        : ' No feedback yet — PawPass will start quietly filtering out repeat dislikes once you\'ve placed a few orders.';
     }
 
     render();
