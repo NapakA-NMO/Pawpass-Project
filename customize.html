@@ -827,7 +827,6 @@
                Taste memory below go from "architecture-only" to live. -->
           <div class="feedback-section">
             <h2>Feedback <span class="q-optional">(simulates a delivered box)</span></h2>
-            <p class="rec-empty-note" id="feedback-locked">Pick a plan above to unlock this</p>
             <div id="feedback-body" hidden>
               <p class="section-intro" style="margin-bottom:16px;">
                 In a real launch this would trigger automatically after each box ships
@@ -958,6 +957,16 @@
         // URL.revokeObjectURL when replaced or when the pet is removed,
         // or the browser holds the image data for the whole session.
         photoUrl: null,
+        // Per-pet (not a shared module-level variable) — a shared timer
+        // would let answering a question for one pet cancel another
+        // pet's still-pending auto-advance if you switch tabs within
+        // the 300ms delay window. Found this while reviewing the
+        // multi-pet + auto-advance interaction.
+        pendingAdvanceTimeout: null,
+        // Tracks what the photo box last showed (photoUrl + species),
+        // so the pulse animation only restarts when that actually
+        // changes — see the render() comment where this is used.
+        _lastPhotoSignature: null,
       };
     }
 
@@ -1002,7 +1011,6 @@
     const recSecretText = document.getElementById('rec-secret-text');
     const secretRerollBtn = document.getElementById('secret-reroll-btn');
     const recTasteMemoryText = document.getElementById('rec-taste-memory-text');
-    const feedbackLocked = document.getElementById('feedback-locked');
     const feedbackBody = document.getElementById('feedback-body');
     const feedbackTagsEl = document.getElementById('feedback-tags');
     const submitFeedbackBtn = document.getElementById('submit-feedback-btn');
@@ -1206,17 +1214,19 @@
       }
     }
 
-    // Debounced with a single pending-timeout handle: without this,
-    // quickly changing an answer (e.g. clicking Dog then correcting to
-    // Cat within the delay window) would schedule two advances and
-    // silently skip a step, since each click's own timeout would still
-    // fire independently.
-    let pendingAdvanceTimeout = null;
+    // Debounced with a per-pet timeout handle (pet.pendingAdvanceTimeout)
+    // — without this, quickly changing an answer (e.g. clicking Dog then
+    // correcting to Cat within the delay window) would schedule two
+    // advances and silently skip a step, since each click's own timeout
+    // would still fire independently. It has to live on the pet, not a
+    // shared module-level variable: a shared timer would let answering a
+    // question for Pet A get silently cancelled by switching to Pet B
+    // and answering there within the same 300ms window.
     function autoAdvance(pet) {
       if (pet.showResults) return;
-      if (pendingAdvanceTimeout) clearTimeout(pendingAdvanceTimeout);
-      pendingAdvanceTimeout = setTimeout(() => {
-        pendingAdvanceTimeout = null;
+      if (pet.pendingAdvanceTimeout) clearTimeout(pet.pendingAdvanceTimeout);
+      pet.pendingAdvanceTimeout = setTimeout(() => {
+        pet.pendingAdvanceTimeout = null;
         advanceStep(pet);
         render();
       }, 300);
@@ -1286,6 +1296,20 @@
       const pet = getActivePet();
       if (pet.photoUrl) URL.revokeObjectURL(pet.photoUrl);
       pet.photoUrl = null;
+      render();
+    });
+
+    // Safety net: accept="image/*" filters the file picker but doesn't
+    // guarantee the browser can actually decode the file (corrupted
+    // file, unsupported format). Without this, a failed load would
+    // leave a permanently broken-image icon in the photo box.
+    photoImg.addEventListener('error', () => {
+      if (photoImg.hidden) return; // no real photo currently set — ignore
+      const pet = getActivePet();
+      if (pet.photoUrl) {
+        URL.revokeObjectURL(pet.photoUrl);
+        pet.photoUrl = null;
+      }
       render();
     });
 
@@ -1379,6 +1403,7 @@
       const idx = pets.findIndex((p) => p.id === id);
       if (idx === -1) return;
       if (pets[idx].photoUrl) URL.revokeObjectURL(pets[idx].photoUrl);
+      if (pets[idx].pendingAdvanceTimeout) clearTimeout(pets[idx].pendingAdvanceTimeout);
       pets.splice(idx, 1);
       if (activePetId === id) {
         activePetId = pets[Math.max(0, idx - 1)].id;
@@ -1520,12 +1545,10 @@
         const wanted = isLike ? true : false;
         btn.setAttribute('aria-pressed', pet.pendingTasteFeedback[tag] === wanted ? 'true' : 'false');
       });
-      // feedbackBody is always shown now — this section only becomes
-      // reachable via #results-view, which requires tier already set
-      // (a required step before results can appear), so the old
-      // locked/unlocked toggle is unreachable dead logic. feedback-
-      // locked stays in the HTML but is permanently hidden.
-      feedbackLocked.hidden = true;
+      // feedbackBody is always shown — this section is only reachable
+      // via #results-view, which requires tier already set (a required
+      // step before results can appear), so there's nothing left to
+      // gate here (the old locked/unlocked placeholder was removed).
       feedbackBody.hidden = false;
       consentPersonalize.checked = pet.pendingConsent.personalize;
       consentAggregate.checked = pet.pendingConsent.aggregate;
@@ -1542,6 +1565,7 @@
       if (pet.photoUrl) {
         photoImg.src = pet.photoUrl;
         photoImg.hidden = false;
+        photoImg.alt = `${pet.name}'s photo`;
         photoEmoji.hidden = true;
         removePhotoBtn.hidden = false;
         photoPlaceholderNote.hidden = true;
@@ -1552,9 +1576,17 @@
         photoPlaceholderNote.hidden = false;
         photoEmoji.textContent = species ? speciesEmoji[species] : '🐾';
       }
-      photoBox.classList.remove('pulse');
-      void photoBox.offsetWidth; // restart animation
-      photoBox.classList.add('pulse');
+      // Only restart the pulse animation when what's actually shown
+      // changes — render() runs on every keystroke while typing weight,
+      // and re-triggering the animation every time produced a visible
+      // flicker on the photo box while typing a number, unrelated to it.
+      const photoSignature = `${pet.photoUrl || ''}|${species || ''}`;
+      if (pet._lastPhotoSignature !== photoSignature) {
+        pet._lastPhotoSignature = photoSignature;
+        photoBox.classList.remove('pulse');
+        void photoBox.offsetWidth; // restart animation
+        photoBox.classList.add('pulse');
+      }
 
       const parts = [];
       if (species) parts.push(speciesEmoji[species] === '🐶' ? 'Dog' : 'Cat');
