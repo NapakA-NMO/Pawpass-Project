@@ -391,6 +391,92 @@
       line-height: 1.5;
     }
 
+    .custom-flavor-block {
+      margin-top: 18px;
+      padding-top: 14px;
+      border-top: 1px dashed #e4d9c4;
+    }
+
+    .custom-flavor-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .custom-flavor-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background-color: #ece2cd;
+      color: #4a3f35;
+      font-size: 0.8rem;
+    }
+
+    .custom-flavor-chip .remove-chip {
+      cursor: pointer;
+      opacity: 0.6;
+      font-size: 0.75rem;
+    }
+
+    .custom-flavor-chip .remove-chip:hover {
+      opacity: 1;
+    }
+
+    .custom-flavor-add {
+      display: flex;
+      gap: 8px;
+    }
+
+    .custom-flavor-add input[type="text"] {
+      flex: 1;
+      min-width: 0;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1.5px solid #e4d9c4;
+      background-color: #fffdf9;
+      color: #4a3f35;
+      font-size: 0.85rem;
+    }
+
+    .tag-add-btn {
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1.5px solid #e4d9c4;
+      background-color: #fffdf9;
+      color: #8a6d3b;
+      font-size: 0.85rem;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .tag-add-btn:hover {
+      border-color: #c8b48c;
+      background-color: #f5f0e6;
+    }
+
+    .tier-features {
+      background-color: #f5f0e6;
+      border-radius: 12px;
+      padding: 20px 24px;
+    }
+
+    .tier-features h2 {
+      margin-bottom: 8px;
+      text-align: left;
+      font-size: 1.15rem;
+    }
+
+    .tier-features ul {
+      margin: 0;
+      padding-left: 18px;
+      font-size: 0.9rem;
+      line-height: 1.7;
+      color: #5c5044;
+    }
+
     /* Recommendations */
     .recommendations {
       margin-top: 32px;
@@ -687,6 +773,7 @@
             <select class="breed-select" id="breed-select">
               <option value="">Pick species first</option>
             </select>
+            <input type="text" class="date-input" id="breed-custom-input" placeholder="Type your pet's breed" hidden />
           </div>
 
           <div class="question" data-question="coat" data-required="true">
@@ -759,6 +846,14 @@
                 <div class="options" data-mode="favorite" id="favorite-options" role="group" aria-label="Favorite flavors"></div>
               </div>
               <div class="pt-hint" id="pick-two-hint"></div>
+
+              <div class="custom-flavor-block">
+                <div class="custom-flavor-list" id="custom-flavor-list"></div>
+                <div class="custom-flavor-add">
+                  <input type="text" id="custom-flavor-input" placeholder="Not on the list? Add your own (e.g. Rabbit)" maxlength="24" />
+                  <button type="button" class="tag-add-btn" id="custom-flavor-add-btn">+ Add</button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -783,6 +878,16 @@
                box" moment, not more quiz questions. -->
           <div id="results-view" hidden>
             <button type="button" class="back-link" id="edit-answers-btn" style="margin-bottom: 20px;">✏️ Edit your answers</button>
+
+            <!-- What's included: makes each plan's real differences
+                 concrete for the pet's chosen tier specifically, using
+                 the same TIER_FEATURES pricing-data.js exports (not a
+                 second hand-typed copy of what index.html's pricing
+                 cards already say). -->
+            <div class="tier-features">
+              <h2 id="tier-features-heading"></h2>
+              <ul id="tier-features-list"></ul>
+            </div>
 
           <!-- Recommendations and Feedback live inside .quiz-pane (not
                as separate full-width sections below .quiz-layout) so
@@ -907,13 +1012,13 @@
   </div>
 
   <script type="module">
-    import { getStarterPrice, getCorePrice, getPremiumPriceRange } from './pricing-data.js';
+    import { getStarterPrice, getCorePrice, getPremiumPriceRange, TIER_FEATURES } from './pricing-data.js';
     import {
       TIER1_BREEDS, BREED_TYPICAL_COAT, SIZE_WEIGHT_BOUNDS_KG,
       getAgeMonths, getLifeStage, getDentalRisk, DENTAL_RECOMMENDATION,
       getExerciseTip, getObesityGuidance, getGrowthGuidance,
     } from './recommendations-data.js';
-    import { getSecretItemPreview, getTasteMemoryExclusions } from './catalog-data.js';
+    import { FLAVOR_TAGS_BY_SPECIES, getSecretItemPreview, getTasteMemoryExclusions } from './catalog-data.js';
 
     // --- Multi-pet data model ---
     // Each pet holds its own full set of answers. Only one pet is
@@ -929,6 +1034,12 @@
         size: null,
         coat: null,
         breed: null,
+        // True while the breed <select>'s "Other (type your own)"
+        // option is chosen — tracked separately from `breed` itself
+        // (which is null until they actually type something) so the
+        // custom text input doesn't immediately hide itself on the
+        // next render just because there's no breed value yet.
+        customBreedMode: false,
         weightKg: null,
         dob: '',
         adoptionDate: '',
@@ -936,6 +1047,12 @@
         tier: null,
         avoids: new Set(),
         favorites: new Set(),
+        // "Fill in yourself" flavors, per pet — extends the fixed
+        // FLAVOR_TAGS_BY_SPECIES list for this pet only (species-change
+        // clears it, same as avoids/favorites, since it's the same
+        // flavor-vocabulary concept). Selectable in both Pick Two and
+        // the Feedback section's taste reactions, same as fixed tags.
+        customFlavorTags: [],
         // Post-order portion feedback (Section 7). Simulated in this
         // build via the Feedback section below, since there's no real
         // order/checkout lifecycle to trigger it after an actual shipped
@@ -992,6 +1109,7 @@
     const petTabsEl = document.getElementById('pet-tabs');
     const petNameInput = document.getElementById('pet-name-input');
     const breedSelect = document.getElementById('breed-select');
+    const breedCustomInput = document.getElementById('breed-custom-input');
     const weightInput = document.getElementById('weight-input');
     const dobInput = document.getElementById('dob-input');
     const adoptionDateInput = document.getElementById('adoption-date-input');
@@ -1009,6 +1127,9 @@
     const avoidLimitLabel = document.getElementById('avoid-limit-label');
     const favoriteLimitLabel = document.getElementById('favorite-limit-label');
     const pickTwoHint = document.getElementById('pick-two-hint');
+    const customFlavorList = document.getElementById('custom-flavor-list');
+    const customFlavorInput = document.getElementById('custom-flavor-input');
+    const customFlavorAddBtn = document.getElementById('custom-flavor-add-btn');
     const recEmptyNote = document.getElementById('rec-empty-note');
     const recBody = document.getElementById('rec-body');
     const recLifeStage = document.getElementById('rec-life-stage');
@@ -1038,6 +1159,8 @@
     const resultsView = document.getElementById('results-view');
     const stepNav = document.getElementById('step-nav');
     const editAnswersBtn = document.getElementById('edit-answers-btn');
+    const tierFeaturesHeading = document.getElementById('tier-features-heading');
+    const tierFeaturesList = document.getElementById('tier-features-list');
     const infoPopover = document.getElementById('info-popover');
 
     // The 10 profile-question steps, captured once in DOM order. Only
@@ -1054,34 +1177,40 @@
 
     const PICK_LIMITS = { starter: 1, core: 2, premium: 3 };
 
-    // Flavor rotation genuinely differs by species (pawpass-brief.md
-    // Section 12) — cats are fussier about fish-forward flavors, so
-    // "Salmon/Fish" for dogs splits into separate "Tuna/Fish" and
-    // "Salmon" tags for cats. Never share one tag list across species.
-    const FLAVOR_TAGS_BY_SPECIES = {
-      dog: ['Chicken', 'Beef', 'Salmon/Fish'],
-      cat: ['Chicken', 'Tuna/Fish', 'Salmon'],
-    };
+    // FLAVOR_TAGS_BY_SPECIES now comes from catalog-data.js (imported
+    // above) — it used to be a local copy here, which is exactly how
+    // "Beef"/"Salmon" once had no matching catalog item at all.
 
-    // Tag button DOM and breed <select> options are both species-
-    // dependent only (shared across any pets of the same species) —
-    // click/change handlers always look up getActivePet() fresh, so
-    // switching pets never requires rebuilding either, only re-syncing
-    // which value is currently selected.
-    let tagsBuiltForSpecies = undefined; // undefined = never built yet
+    // Breed <select> options are species-dependent only (shared across
+    // any pets of the same species). Tag buttons (Pick Two + Feedback)
+    // used to be species-dependent only too, but now also depend on the
+    // active pet's own customFlavorTags — a "fill in yourself" flavor
+    // is per-pet, so two same-species pets can have different tag sets.
+    // Tracked with a combined signature instead of species alone;
+    // click/change handlers still always look up getActivePet() fresh.
     let breedOptionsBuiltForSpecies = undefined;
-    let feedbackTagsBuiltForSpecies = undefined;
+    let tagsBuiltSignature = undefined; // undefined = never built yet
+    let feedbackTagsBuiltSignature = undefined;
 
-    function buildTagButtons(species) {
+    function tagSignature(pet) {
+      return `${pet.species || ''}|${pet.customFlavorTags.join(',')}`;
+    }
+
+    function getFlavorTags(pet) {
+      return pet.species ? [...FLAVOR_TAGS_BY_SPECIES[pet.species], ...pet.customFlavorTags] : [];
+    }
+
+    function buildTagButtons(pet) {
       avoidOptions.innerHTML = '';
       favoriteOptions.innerHTML = '';
-      tagsBuiltForSpecies = species;
-      if (!species) return;
+      tagsBuiltSignature = tagSignature(pet);
+      const tags = getFlavorTags(pet);
+      if (!tags.length) return;
       [
         { container: avoidOptions, key: 'avoids', otherKey: 'favorites' },
         { container: favoriteOptions, key: 'favorites', otherKey: 'avoids' },
       ].forEach(({ container, key, otherKey }) => {
-        FLAVOR_TAGS_BY_SPECIES[species].forEach((tag) => {
+        tags.forEach((tag) => {
           const btn = document.createElement('button');
           btn.type = 'button';
           btn.className = 'tag-btn';
@@ -1125,16 +1254,20 @@
         opt.textContent = breed;
         breedSelect.appendChild(opt);
       });
+      const customOpt = document.createElement('option');
+      customOpt.value = '__custom__';
+      customOpt.textContent = "Other (type your own)";
+      breedSelect.appendChild(customOpt);
     }
 
-    // Feedback tag rows (like/dislike per flavor) — same species-
-    // dependent DOM pattern as buildTagButtons: shared across pets of
-    // the same species, handlers always look up getActivePet() fresh.
-    function buildFeedbackTagButtons(species) {
+    // Feedback tag rows (like/dislike per flavor) — same pattern as
+    // buildTagButtons, including custom flavors for the active pet.
+    function buildFeedbackTagButtons(pet) {
       feedbackTagsEl.innerHTML = '';
-      feedbackTagsBuiltForSpecies = species;
-      if (!species) return;
-      FLAVOR_TAGS_BY_SPECIES[species].forEach((tag) => {
+      feedbackTagsBuiltSignature = tagSignature(pet);
+      const tags = getFlavorTags(pet);
+      if (!tags.length) return;
+      tags.forEach((tag) => {
         const row = document.createElement('div');
         row.className = 'feedback-tag-row';
         const name = document.createElement('span');
@@ -1188,6 +1321,8 @@
             pet.avoids.clear();
             pet.favorites.clear();
             pet.breed = null;
+            pet.customBreedMode = false;
+            pet.customFlavorTags = [];
             pet.pendingTasteFeedback = {}; // unsubmitted draft only — feedbackHistory stays
           }
           pet[question] = btn.dataset.value;
@@ -1201,6 +1336,18 @@
 
     breedSelect.addEventListener('change', () => {
       const pet = getActivePet();
+      if (breedSelect.value === '__custom__') {
+        // Reveal the text input and wait for them to actually type
+        // something — don't auto-advance yet, there's nothing to
+        // advance on. customBreedMode (not pet.breed) drives whether
+        // the input stays visible, since pet.breed is still null here.
+        pet.customBreedMode = true;
+        pet.breed = null;
+        render();
+        breedCustomInput.focus();
+        return;
+      }
+      pet.customBreedMode = false;
       pet.breed = breedSelect.value || null;
       // Pre-fill (not lock) the Coat question, which now comes right
       // after Breed — the customer still answers/confirms it
@@ -1214,10 +1361,71 @@
       autoAdvance(pet);
     });
 
+    // Custom-typed breeds have no BREED_TYPICAL_COAT entry (they're not
+    // in the curated list) — no coat pre-fill happens here, same
+    // treatment as picking "Not sure".
+    breedCustomInput.addEventListener('change', () => {
+      const pet = getActivePet();
+      pet.breed = breedCustomInput.value.trim() || null;
+      render();
+      if (pet.breed) autoAdvance(pet);
+    });
+
     secretRerollBtn.addEventListener('click', () => {
       getActivePet().secretItemRerollCount += 1;
       render();
     });
+
+    function addCustomFlavor() {
+      const pet = getActivePet();
+      const value = customFlavorInput.value.trim();
+      if (!value) return;
+      const existing = getFlavorTags(pet).map((t) => t.toLowerCase());
+      if (existing.includes(value.toLowerCase())) {
+        customFlavorInput.value = '';
+        return; // already in the list (fixed or custom) — nothing to add
+      }
+      pet.customFlavorTags.push(value);
+      customFlavorInput.value = '';
+      render();
+    }
+
+    customFlavorAddBtn.addEventListener('click', addCustomFlavor);
+    customFlavorInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        addCustomFlavor();
+      }
+    });
+
+    function removeCustomFlavor(tag) {
+      const pet = getActivePet();
+      pet.customFlavorTags = pet.customFlavorTags.filter((t) => t !== tag);
+      // Clean up any selections that referenced the removed tag —
+      // otherwise a deleted custom flavor could keep occupying a Pick
+      // Two slot or a pending taste-feedback reaction invisibly.
+      pet.avoids.delete(tag);
+      pet.favorites.delete(tag);
+      delete pet.pendingTasteFeedback[tag];
+      render();
+    }
+
+    function renderCustomFlavorList(pet) {
+      customFlavorList.innerHTML = '';
+      pet.customFlavorTags.forEach((tag) => {
+        const chip = document.createElement('span');
+        chip.className = 'custom-flavor-chip';
+        const label = document.createElement('span');
+        label.textContent = tag;
+        chip.appendChild(label);
+        const remove = document.createElement('span');
+        remove.className = 'remove-chip';
+        remove.textContent = '✕';
+        remove.addEventListener('click', () => removeCustomFlavor(tag));
+        chip.appendChild(remove);
+        customFlavorList.appendChild(chip);
+      });
+    }
 
     // advanceStep() moves to the next question, or into the results
     // reveal from the last one. autoAdvance() wraps it with a short
@@ -1535,13 +1743,16 @@
       if (species !== breedOptionsBuiltForSpecies) {
         buildBreedOptions(species);
       }
-      breedSelect.value = pet.breed || '';
+      breedSelect.value = pet.customBreedMode ? '__custom__' : (pet.breed || '');
+      breedCustomInput.hidden = !pet.customBreedMode;
+      if (pet.customBreedMode) breedCustomInput.value = pet.breed || '';
 
-      // Pick Two: tag DOM is species-dependent only; rebuild when the
-      // active pet's species differs from what's currently built.
-      if (species !== tagsBuiltForSpecies) {
-        buildTagButtons(species);
+      // Pick Two: tag DOM depends on species + this pet's own custom
+      // flavor tags; rebuild when that combined signature changes.
+      if (tagSignature(pet) !== tagsBuiltSignature) {
+        buildTagButtons(pet);
       }
+      renderCustomFlavorList(pet);
 
       // No more locked/unlocked toggle here — the Pick Two step is
       // unreachable in the stepper without tier already set (required
@@ -1562,11 +1773,11 @@
         });
       });
 
-      // Feedback: tag DOM is species-dependent only, same pattern as
-      // Pick Two's tags; the section itself is gated on tier alone
-      // (simulating "a box exists to give feedback on").
-      if (species !== feedbackTagsBuiltForSpecies) {
-        buildFeedbackTagButtons(species);
+      // Feedback: same combined-signature rebuild as Pick Two's tags;
+      // the section itself is gated on tier alone (simulating "a box
+      // exists to give feedback on").
+      if (tagSignature(pet) !== feedbackTagsBuiltSignature) {
+        buildFeedbackTagButtons(pet);
       }
       feedbackTagsEl.querySelectorAll('.feedback-tag-btn').forEach((btn) => {
         const tag = btn.dataset.tag;
@@ -1643,6 +1854,14 @@
         livePrice.innerHTML = `${text}<span>${tierLabel[tier]} · ${parts.join(' · ')}</span>`;
       } else {
         livePrice.innerHTML = `—<span>Answer the questions above to see your price</span>`;
+      }
+
+      // Tier is guaranteed set by the time #results-view is visible
+      // (required step 9), but this line also runs while still
+      // stepping through earlier questions — guard for that case.
+      if (tier) {
+        tierFeaturesHeading.textContent = `What's included with ${tierLabel[tier]}`;
+        tierFeaturesList.innerHTML = TIER_FEATURES[tier].map((f) => `<li>${f}</li>`).join('');
       }
 
       renderRecommendations(pet, species, size);

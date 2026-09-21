@@ -83,3 +83,29 @@ export function getTierPriceRange(tier) {
   const all = [...Object.values(table.dog), ...Object.values(table.cat)];
   return { min: Math.min(...all), max: Math.max(...all) };
 }
+
+// What each tier actually includes, per pawpass-brief.md Section 5 —
+// used by customize.html's results view to show "what's included" for
+// the pet's chosen tier specifically. index.html's landing-page pricing
+// cards keep their own hand-written bullets (marketing copy tuned for
+// that context) rather than reading from this — these numbers (price)
+// are the drift risk that matters, not the wording of a features list,
+// so this exists to avoid a second quiz-side rewrite of the same facts,
+// not to force one canonical sentence everywhere.
+export const TIER_FEATURES = {
+  starter: [
+    'Food, treats, and a sample-size supplement',
+    '1 Avoid + 1 Favorite (permanent)',
+    'A great way to try PawPass',
+  ],
+  core: [
+    'Full box including a branded toy',
+    '2 Avoid + 2 Favorite (permanent)',
+    'Long-hair/hairless coat add-on available',
+  ],
+  premium: [
+    'Quarterly Pet Wellness Review',
+    '3 Avoid + 3 Favorite (permanent)',
+    'Exclusive item + extra treat & supplement slot',
+  ],
+};

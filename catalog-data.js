@@ -11,26 +11,39 @@
 // describes the catalog only categorically (species × life-stage ×
 // flavor for food; named sub-types for treats/supplements; one toy
 // line) with no concrete item/SKU list. CATALOG below is this module's
-// own minimal placeholder content (~2 items per category per species),
-// scoped deliberately small and proportionate to a demo — confirmed
-// with the user rather than assumed.
+// own minimal placeholder content, scoped deliberately small and
+// proportionate to a demo — confirmed with the user rather than assumed.
 
-// Food lists intentionally have one item per Pick Two flavor tag (see
-// customize.html's FLAVOR_TAGS_BY_SPECIES: dog = Chicken/Beef/Salmon-
-// Fish, cat = Chicken/Tuna-Fish/Salmon) — a prior version had only 2
-// food items per species, so "Beef" (dog) and "Salmon" (cat) had no
-// matching catalog item at all: a customer could set either as their
-// permanent Favorite and it would never actually appear anywhere,
-// including in the Secret Item preview. Fixed by covering every tag.
+// Pick Two / taste-memory flavor vocabulary — the single source of
+// truth for both. Previously hand-duplicated as customize.html's own
+// local FLAVOR_TAGS_BY_SPECIES, which is exactly how "Beef" (dog) and
+// "Salmon" (cat) once had no matching CATALOG.food item at all: two
+// independently maintained lists drifted apart. Consolidated here so
+// CATALOG.food below can be kept in 1:1 sync with this in one place —
+// every flavor tag must have a matching food item, and vice versa.
+// Cats are fussier about fish-forward flavors than dogs (pawpass-
+// brief.md Section 12), which is why "Salmon/Fish" for dogs splits into
+// separate "Tuna/Fish" and "Salmon" tags for cats.
+export const FLAVOR_TAGS_BY_SPECIES = {
+  dog: ['Chicken', 'Beef', 'Salmon/Fish', 'Duck', 'Lamb'],
+  cat: ['Chicken', 'Tuna/Fish', 'Salmon', 'Duck', 'Turkey'],
+};
+
 export const CATALOG = {
   dog: {
-    food: ['Chicken & Rice Kibble', 'Beef & Vegetable Kibble', 'Salmon Pâté Pouch'],
+    food: [
+      'Chicken & Rice Kibble', 'Beef & Vegetable Kibble', 'Salmon Pâté Pouch',
+      'Duck & Sweet Potato Kibble', 'Lamb & Rice Kibble',
+    ],
     treats: ['Chicken Jerky Bites', 'Soft Training Bites'],
     supplements: ['Glucosamine Joint Chews', 'Omega-3 Skin & Coat Oil'],
     toy: ['Durable Rubber Chew Bone', 'Rope Tug Toy'],
   },
   cat: {
-    food: ['Chicken & Rice Kibble', 'Tuna Pâté Pouch', 'Salmon Pâté Pouch'],
+    food: [
+      'Chicken & Rice Kibble', 'Tuna Pâté Pouch', 'Salmon Pâté Pouch',
+      'Duck Pâté Pouch', 'Turkey & Rice Kibble',
+    ],
     treats: ['Freeze-Dried Bonito Flakes', 'Lickable Chicken Treat'],
     supplements: ['Hairball Control Chews', 'Omega-3 Skin & Coat Oil'],
     toy: ['Feather Wand Toy', 'Crinkle Ball'],
