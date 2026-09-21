@@ -65,6 +65,14 @@ h2 {
   font-size: 0.85rem;
   color: #8a6d3b;
   text-decoration: none;
+  /* also used on a <button> (customize.html's "Edit your answers") —
+     reset button chrome so it reads as a plain text link either way;
+     harmless no-ops when applied to an <a>. */
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
 }
 
 .back-link:hover {
