@@ -192,19 +192,22 @@
 
     .option-btn {
       flex: 1 1 auto;
-      min-width: 90px;
-      padding: 12px 14px;
-      border-radius: 10px;
-      border: 1.5px solid #e4d9c4;
+      min-width: 130px;
+      min-height: 64px;
+      padding: 20px 24px;
+      border-radius: 14px;
+      border: 2px solid #e4d9c4;
       background-color: #fffdf9;
       color: #4a3f35;
-      font-size: 0.9rem;
+      font-size: 1.05rem;
+      font-weight: 500;
       cursor: pointer;
-      transition: border-color 0.15s ease, background-color 0.15s ease;
+      transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.1s ease;
     }
 
     .option-btn:hover {
       border-color: #c8b48c;
+      transform: translateY(-1px);
     }
 
     .option-btn[aria-pressed="true"] {
@@ -534,13 +537,6 @@
       cursor: not-allowed;
     }
 
-    .step-hint {
-      margin: 10px 0 0;
-      font-size: 0.8rem;
-      color: #b04a3f;
-      text-align: center;
-      min-height: 1em;
-    }
   </style>
 </head>
 <body>
@@ -689,7 +685,6 @@
               <button type="button" class="step-btn secondary" id="step-back-btn">← Back</button>
               <button type="button" class="step-btn primary" id="step-next-btn">Next →</button>
             </div>
-            <p class="step-hint" id="step-hint"></p>
           </div>
 
           <!-- Results reveal: shown after the last step instead of being
@@ -931,7 +926,6 @@
     const stepProgressLabel = document.getElementById('step-progress-label');
     const stepBackBtn = document.getElementById('step-back-btn');
     const stepNextBtn = document.getElementById('step-next-btn');
-    const stepHint = document.getElementById('step-hint');
     const resultsView = document.getElementById('results-view');
     const stepNav = document.getElementById('step-nav');
     const editAnswersBtn = document.getElementById('edit-answers-btn');
@@ -1062,9 +1056,17 @@
     }
 
     // Wire up every single-select option group (species/size/coat/tier/
-    // spayedNeutered): click writes onto whichever pet is currently active.
+    // spayedNeutered/pendingPortion): click writes onto whichever pet is
+    // currently active. For groups that belong to a stepper question
+    // (not pendingPortion, which lives in the Feedback/results view),
+    // clicking an answer auto-advances to the next step after a short
+    // delay — "no need to click Next" — since a click on a button group
+    // unambiguously is the answer, unlike a free-form input where an
+    // empty field could just mean "not answered yet."
     document.querySelectorAll('.options[data-question]').forEach((group) => {
       const question = group.dataset.question;
+      const stepEl = group.closest('.question');
+      const isStepperGroup = stepEls.includes(stepEl);
       group.querySelectorAll('.option-btn').forEach((btn) => {
         btn.addEventListener('click', () => {
           const pet = getActivePet();
@@ -1080,13 +1082,18 @@
           }
           pet[question] = btn.dataset.value;
           render();
+          if (isStepperGroup) {
+            autoAdvance(pet);
+          }
         });
       });
     });
 
     breedSelect.addEventListener('change', () => {
-      getActivePet().breed = breedSelect.value || null;
+      const pet = getActivePet();
+      pet.breed = breedSelect.value || null;
       render();
+      autoAdvance(pet);
     });
 
     secretRerollBtn.addEventListener('click', () => {
@@ -1094,30 +1101,48 @@
       render();
     });
 
-    function isCurrentStepValid(pet) {
-      const stepEl = stepEls[pet.currentStep];
-      if (stepEl.dataset.required !== 'true') return true;
-      return pet[stepEl.dataset.question] != null;
-    }
-
-    stepNextBtn.addEventListener('click', () => {
-      const pet = getActivePet();
-      if (!isCurrentStepValid(pet)) {
-        stepHint.textContent = 'Please answer this question before continuing.';
-        return;
-      }
-      stepHint.textContent = '';
+    // advanceStep() moves to the next question, or into the results
+    // reveal from the last one. autoAdvance() wraps it with a short
+    // delay so the user sees their answer register (the pressed-button
+    // state, a filled date field, etc.) before the view changes —
+    // instant-jump felt jarring. Required steps (species/size/coat/
+    // tier) have no visible Next button at all: an answer-click is
+    // unambiguous, so validation before advancing is no longer needed —
+    // you can't reach the next step without having answered.
+    function advanceStep(pet) {
       if (pet.currentStep < stepEls.length - 1) {
         pet.currentStep += 1;
       } else {
         pet.showResults = true; // last step (Pick Two) done -> reveal results
       }
+    }
+
+    // Debounced with a single pending-timeout handle: without this,
+    // quickly changing an answer (e.g. clicking Dog then correcting to
+    // Cat within the delay window) would schedule two advances and
+    // silently skip a step, since each click's own timeout would still
+    // fire independently.
+    let pendingAdvanceTimeout = null;
+    function autoAdvance(pet) {
+      if (pet.showResults) return;
+      if (pendingAdvanceTimeout) clearTimeout(pendingAdvanceTimeout);
+      pendingAdvanceTimeout = setTimeout(() => {
+        pendingAdvanceTimeout = null;
+        advanceStep(pet);
+        render();
+      }, 300);
+    }
+
+    // Visible only for optional steps ("Skip →") and the final Pick Two
+    // step ("See your results →") — see renderStepper.
+    stepNextBtn.addEventListener('click', () => {
+      const pet = getActivePet();
+      advanceStep(pet);
       render();
     });
 
     stepBackBtn.addEventListener('click', () => {
       const pet = getActivePet();
-      stepHint.textContent = '';
       if (pet.showResults) {
         pet.showResults = false; // back onto the last step (Pick Two)
       } else if (pet.currentStep > 0) {
@@ -1183,15 +1208,25 @@
       getActivePet().weightKg = Number.isNaN(val) ? null : val;
       render();
     });
+    // Separate 'change' (fires on blur-after-edit, not every keystroke
+    // like 'input' above) purely to auto-advance once typing is done —
+    // advancing on every digit typed would be unusable.
+    weightInput.addEventListener('change', () => {
+      autoAdvance(getActivePet());
+    });
 
     dobInput.addEventListener('change', () => {
-      getActivePet().dob = dobInput.value;
+      const pet = getActivePet();
+      pet.dob = dobInput.value;
       render();
+      autoAdvance(pet);
     });
 
     adoptionDateInput.addEventListener('change', () => {
-      getActivePet().adoptionDate = adoptionDateInput.value;
+      const pet = getActivePet();
+      pet.adoptionDate = adoptionDateInput.value;
       render();
+      autoAdvance(pet);
     });
 
     petNameInput.addEventListener('input', () => {
@@ -1253,10 +1288,6 @@
     }
 
     function renderStepper(pet) {
-      stepHint.textContent = ''; // clears on any real interaction; the
-      // failed-validation message in stepNextBtn's handler is set
-      // directly and skips calling render(), so it survives until here.
-
       if (pet.showResults) {
         stepEls.forEach((el) => { el.hidden = true; });
         stepNav.hidden = true;
@@ -1270,10 +1301,27 @@
 
       const total = stepEls.length;
       const current = pet.currentStep + 1;
+      const currentEl = stepEls[pet.currentStep];
+      const isLast = pet.currentStep === total - 1;
+      const isRequired = currentEl.dataset.required === 'true';
+
       stepProgressBar.style.width = `${(current / total) * 100}%`;
       stepProgressLabel.textContent = `Question ${current} of ${total}`;
       stepBackBtn.disabled = pet.currentStep === 0;
-      stepNextBtn.textContent = pet.currentStep === total - 1 ? 'See your results →' : 'Next →';
+
+      // Required steps (species/size/coat/tier) auto-advance on answer —
+      // no button needed, since there's nothing valid to skip past.
+      // Optional steps get "Skip", the final step (Pick Two, no single
+      // answer to auto-trigger from) gets an explicit "See your results".
+      if (isLast) {
+        stepNextBtn.hidden = false;
+        stepNextBtn.textContent = 'See your results →';
+      } else if (isRequired) {
+        stepNextBtn.hidden = true;
+      } else {
+        stepNextBtn.hidden = false;
+        stepNextBtn.textContent = 'Skip →';
+      }
     }
 
     function render() {
