@@ -269,7 +269,7 @@
 
           <div class="question">
             <label class="q-label"><span class="q-num">5.</span>Pick Two — permanent Avoid &amp; Favorite</label>
-            <p id="pick-two-locked" class="pick-two-locked">Pick a plan above to unlock this</p>
+            <p id="pick-two-locked" class="pick-two-locked">Pick your pet's species and a plan above to unlock this</p>
             <div id="pick-two-body" hidden>
               <div class="pick-two-group">
                 <span class="pt-label">Avoid <span class="pt-limit" id="avoid-limit-label"></span> — never ships</span>
@@ -322,39 +322,62 @@
     // (pawpass-brief.md Section 5). Options are flavor/category tags,
     // scoped at the category level per the brief, not exact SKUs.
     const PICK_LIMITS = { starter: 1, core: 2, premium: 3 };
-    const FLAVOR_TAGS = ['Chicken', 'Beef', 'Salmon/Fish', 'Tuna'];
 
-    // Build the Avoid/Favorite tag buttons once — same tag set for both,
-    // since a flavor can only ever be one or the other for a given pet.
-    [
-      { container: avoidOptions, set: state.avoids, other: state.favorites },
-      { container: favoriteOptions, set: state.favorites, other: state.avoids },
-    ].forEach(({ container, set, other }) => {
-      FLAVOR_TAGS.forEach((tag) => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'tag-btn';
-        btn.dataset.value = tag;
-        btn.setAttribute('aria-pressed', 'false');
-        btn.textContent = tag;
-        btn.addEventListener('click', () => {
-          const limit = PICK_LIMITS[state.tier] ?? 0;
-          if (set.has(tag)) {
-            set.delete(tag);
-          } else {
-            if (set.size >= limit) {
-              pickTwoHint.textContent = `You can only pick ${limit} here for the ${tierLabel[state.tier]} plan — remove one first.`;
-              return;
+    // Flavor rotation genuinely differs by species (pawpass-brief.md
+    // Section 12) — cats are fussier about fish-forward flavors, so
+    // "Salmon/Fish" for dogs splits into separate "Tuna/Fish" and
+    // "Salmon" tags for cats. Never share one tag list across species.
+    const FLAVOR_TAGS_BY_SPECIES = {
+      dog: ['Chicken', 'Beef', 'Salmon/Fish'],
+      cat: ['Chicken', 'Tuna/Fish', 'Salmon'],
+    };
+
+    let tagsBuiltForSpecies = null;
+
+    // (Re)build the Avoid/Favorite tag buttons for the current species.
+    // Only runs when species actually changes, since prior picks don't
+    // necessarily carry over to a different species' flavor vocabulary —
+    // switching species resets Pick Two selections on purpose.
+    function buildTagButtons(species) {
+      state.avoids.clear();
+      state.favorites.clear();
+      avoidOptions.innerHTML = '';
+      favoriteOptions.innerHTML = '';
+      if (!species) {
+        tagsBuiltForSpecies = null;
+        return;
+      }
+      [
+        { container: avoidOptions, set: state.avoids, other: state.favorites },
+        { container: favoriteOptions, set: state.favorites, other: state.avoids },
+      ].forEach(({ container, set, other }) => {
+        FLAVOR_TAGS_BY_SPECIES[species].forEach((tag) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'tag-btn';
+          btn.dataset.value = tag;
+          btn.setAttribute('aria-pressed', 'false');
+          btn.textContent = tag;
+          btn.addEventListener('click', () => {
+            const limit = PICK_LIMITS[state.tier] ?? 0;
+            if (set.has(tag)) {
+              set.delete(tag);
+            } else {
+              if (set.size >= limit) {
+                pickTwoHint.textContent = `You can only pick ${limit} here for the ${tierLabel[state.tier]} plan — remove one first.`;
+                return;
+              }
+              other.delete(tag); // a flavor can't be both Avoid and Favorite at once
+              set.add(tag);
             }
-            other.delete(tag); // a flavor can't be both Avoid and Favorite at once
-            set.add(tag);
-          }
-          pickTwoHint.textContent = '';
-          render();
+            pickTwoHint.textContent = '';
+            render();
+          });
+          container.appendChild(btn);
         });
-        container.appendChild(btn);
       });
-    });
+      tagsBuiltForSpecies = species;
+    }
 
     // Wire up every option button: click selects it, marks it pressed,
     // clears its siblings, updates state, and re-renders the live preview.
@@ -373,10 +396,14 @@
     function render() {
       const { species, size, coat, tier, avoids, favorites } = state;
 
-      // Pick Two: locked until a tier is chosen (limits depend on tier).
-      // If the tier changes to a lower limit, trim any excess picks so
-      // the selection never silently exceeds what that plan allows.
-      if (tier) {
+      // Pick Two: locked until species + tier are both chosen — tags
+      // depend on species (built above), limits depend on tier. Tags
+      // rebuild only when species actually changes.
+      if (species !== tagsBuiltForSpecies) {
+        buildTagButtons(species);
+      }
+
+      if (species && tier) {
         const limit = PICK_LIMITS[tier];
         [avoids, favorites].forEach((set) => {
           [...set].slice(limit).forEach((tag) => set.delete(tag));
@@ -388,8 +415,6 @@
       } else {
         pickTwoLocked.hidden = false;
         pickTwoBody.hidden = true;
-        avoids.clear();
-        favorites.clear();
       }
 
       [avoidOptions, favoriteOptions].forEach((container) => {
