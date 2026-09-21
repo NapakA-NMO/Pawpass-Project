@@ -250,12 +250,6 @@
     }
 
     /* Pick Two */
-    .pick-two-locked {
-      font-size: 0.85rem;
-      color: #a08c74;
-      font-style: italic;
-    }
-
     .pick-two-group {
       margin-top: 16px;
     }
@@ -477,6 +471,76 @@
       color: #b04a3f;
       min-height: 1em;
     }
+
+    /* Step navigation */
+    .step-nav {
+      margin-top: 32px;
+      padding-top: 20px;
+      border-top: 1px solid #ece2cd;
+    }
+
+    .step-progress {
+      height: 6px;
+      border-radius: 999px;
+      background-color: #f5f0e6;
+      overflow: hidden;
+    }
+
+    .step-progress-bar {
+      height: 100%;
+      background-color: #4a3f35;
+      border-radius: 999px;
+      transition: width 0.2s ease;
+      width: 0%;
+    }
+
+    .step-progress-label {
+      margin-top: 8px;
+      font-size: 0.8rem;
+      color: #a08c74;
+      text-align: center;
+    }
+
+    .step-nav-buttons {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .step-btn {
+      flex: 1;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+
+    .step-btn.primary {
+      background-color: #4a3f35;
+      border: 1.5px solid #4a3f35;
+      color: #fffdf9;
+      font-weight: 600;
+    }
+
+    .step-btn.secondary {
+      background-color: #fffdf9;
+      border: 1.5px solid #e4d9c4;
+      color: #4a3f35;
+    }
+
+    .step-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .step-hint {
+      margin: 10px 0 0;
+      font-size: 0.8rem;
+      color: #b04a3f;
+      text-align: center;
+      min-height: 1em;
+    }
   </style>
 </head>
 <body>
@@ -512,7 +576,7 @@
         <!-- Quiz pane -->
         <div class="quiz-pane">
 
-          <div class="question">
+          <div class="question" data-question="species" data-required="true">
             <label class="q-label"><span class="q-num">1.</span>What kind of pet do you have?</label>
             <div class="options" data-question="species" role="group" aria-label="What kind of pet do you have?">
               <button type="button" class="option-btn" data-value="dog">🐶 Dog</button>
@@ -520,7 +584,7 @@
             </div>
           </div>
 
-          <div class="question">
+          <div class="question" data-question="size" data-required="true">
             <label class="q-label"><span class="q-num">2.</span>How big are they?</label>
             <div class="options" data-question="size" role="group" aria-label="How big are they?">
               <button type="button" class="option-btn" data-value="small">Small</button>
@@ -529,7 +593,7 @@
             </div>
           </div>
 
-          <div class="question">
+          <div class="question" data-question="coat" data-required="true">
             <label class="q-label"><span class="q-num">3.</span>What's their coat like?</label>
             <div class="options" data-question="coat" role="group" aria-label="What's their coat like?">
               <button type="button" class="option-btn" data-value="short-hair">Short-hair</button>
@@ -584,7 +648,7 @@
             </div>
           </div>
 
-          <div class="question">
+          <div class="question" data-question="tier" data-required="true">
             <label class="q-label"><span class="q-num">9.</span>Which plan sounds right?</label>
             <div class="options" data-question="tier" role="group" aria-label="Which plan sounds right?">
               <button type="button" class="option-btn" data-value="starter">Starter</button>
@@ -595,8 +659,11 @@
 
           <div class="question">
             <label class="q-label"><span class="q-num">10.</span>Pick Two — permanent Avoid &amp; Favorite</label>
-            <p id="pick-two-locked" class="pick-two-locked">Pick your pet's species and a plan above to unlock this</p>
-            <div id="pick-two-body" hidden>
+            <!-- No longer gated on "species + tier chosen" — in a linear
+                 stepper this is unreachable without those already
+                 answered (required steps 1/2/3/9 enforce it), so the
+                 old pick-two-locked placeholder was dead code. -->
+            <div id="pick-two-body">
               <div class="pick-two-group">
                 <span class="pt-label">Avoid <span class="pt-limit" id="avoid-limit-label"></span> — never ships</span>
                 <div class="options" data-mode="avoid" id="avoid-options" role="group" aria-label="Avoid flavors"></div>
@@ -608,6 +675,29 @@
               <div class="pt-hint" id="pick-two-hint"></div>
             </div>
           </div>
+
+          <!-- Step navigation: progress + Back/Next, one question visible
+               at a time (the rest are hidden by JS) — per the "quiz-style
+               flow" UX spec, replacing the old long-scroll layout where
+               all 10 questions were visible at once. -->
+          <div class="step-nav" id="step-nav">
+            <div class="step-progress">
+              <div class="step-progress-bar" id="step-progress-bar"></div>
+            </div>
+            <div class="step-progress-label" id="step-progress-label"></div>
+            <div class="step-nav-buttons">
+              <button type="button" class="step-btn secondary" id="step-back-btn">← Back</button>
+              <button type="button" class="step-btn primary" id="step-next-btn">Next →</button>
+            </div>
+            <p class="step-hint" id="step-hint"></p>
+          </div>
+
+          <!-- Results reveal: shown after the last step instead of being
+               stepped through itself — Recommendations/Secret
+               item/Taste memory/Feedback form one combined "here's your
+               box" moment, not more quiz questions. -->
+          <div id="results-view" hidden>
+            <button type="button" class="back-link" id="edit-answers-btn" style="margin-bottom: 20px;">✏️ Edit your answers</button>
 
           <!-- Recommendations and Feedback live inside .quiz-pane (not
                as separate full-width sections below .quiz-layout) so
@@ -715,6 +805,9 @@
             </div>
           </div>
 
+          </div>
+          <!-- /results-view -->
+
         </div>
       </div>
 
@@ -779,6 +872,14 @@
         // the secret-item pick's seed — otherwise the pick stays stable
         // across re-renders (see catalog-data.js's hashSeed comment).
         secretItemRerollCount: 0,
+        // Stepper position — per-pet, so switching pets resumes exactly
+        // where that pet was left, rather than always restarting at
+        // step 0. showResults toggles the Pick Two step vs. the combined
+        // results reveal; currentStep itself doesn't change when
+        // entering/leaving results, so "Edit answers" just flips
+        // showResults back without needing to recompute a step index.
+        currentStep: 0,
+        showResults: false,
       };
     }
 
@@ -798,8 +899,6 @@
     const photoCaption = document.getElementById('photo-caption');
     const livePrice = document.getElementById('live-price');
     const pickTwoSummary = document.getElementById('pick-two-summary');
-    const pickTwoLocked = document.getElementById('pick-two-locked');
-    const pickTwoBody = document.getElementById('pick-two-body');
     const avoidOptions = document.getElementById('avoid-options');
     const favoriteOptions = document.getElementById('favorite-options');
     const avoidLimitLabel = document.getElementById('avoid-limit-label');
@@ -828,6 +927,20 @@
     const consentPersonalize = document.getElementById('consent-personalize');
     const consentAggregate = document.getElementById('consent-aggregate');
     const consentHint = document.getElementById('consent-hint');
+    const stepProgressBar = document.getElementById('step-progress-bar');
+    const stepProgressLabel = document.getElementById('step-progress-label');
+    const stepBackBtn = document.getElementById('step-back-btn');
+    const stepNextBtn = document.getElementById('step-next-btn');
+    const stepHint = document.getElementById('step-hint');
+    const resultsView = document.getElementById('results-view');
+    const stepNav = document.getElementById('step-nav');
+    const editAnswersBtn = document.getElementById('edit-answers-btn');
+
+    // The 10 profile-question steps, captured once in DOM order. Only
+    // one is shown at a time (per pet, via pet.currentStep) — the "quiz-
+    // style flow" the project's UX memory calls for, replacing the old
+    // long-scroll layout where all 10 were visible at once.
+    const stepEls = [...document.querySelectorAll('.quiz-pane > .question')];
 
     const speciesEmoji = { dog: '🐶', cat: '🐱' };
     const sizeLabel = { small: 'Small', medium: 'Medium', large: 'Large' };
@@ -981,6 +1094,43 @@
       render();
     });
 
+    function isCurrentStepValid(pet) {
+      const stepEl = stepEls[pet.currentStep];
+      if (stepEl.dataset.required !== 'true') return true;
+      return pet[stepEl.dataset.question] != null;
+    }
+
+    stepNextBtn.addEventListener('click', () => {
+      const pet = getActivePet();
+      if (!isCurrentStepValid(pet)) {
+        stepHint.textContent = 'Please answer this question before continuing.';
+        return;
+      }
+      stepHint.textContent = '';
+      if (pet.currentStep < stepEls.length - 1) {
+        pet.currentStep += 1;
+      } else {
+        pet.showResults = true; // last step (Pick Two) done -> reveal results
+      }
+      render();
+    });
+
+    stepBackBtn.addEventListener('click', () => {
+      const pet = getActivePet();
+      stepHint.textContent = '';
+      if (pet.showResults) {
+        pet.showResults = false; // back onto the last step (Pick Two)
+      } else if (pet.currentStep > 0) {
+        pet.currentStep -= 1;
+      }
+      render();
+    });
+
+    editAnswersBtn.addEventListener('click', () => {
+      getActivePet().showResults = false;
+      render();
+    });
+
     submitFeedbackBtn.addEventListener('click', () => {
       const pet = getActivePet();
       const hasPortion = pet.pendingPortion != null;
@@ -1102,11 +1252,36 @@
       petTabsEl.appendChild(addBtn);
     }
 
+    function renderStepper(pet) {
+      stepHint.textContent = ''; // clears on any real interaction; the
+      // failed-validation message in stepNextBtn's handler is set
+      // directly and skips calling render(), so it survives until here.
+
+      if (pet.showResults) {
+        stepEls.forEach((el) => { el.hidden = true; });
+        stepNav.hidden = true;
+        resultsView.hidden = false;
+        return;
+      }
+
+      resultsView.hidden = true;
+      stepNav.hidden = false;
+      stepEls.forEach((el, i) => { el.hidden = i !== pet.currentStep; });
+
+      const total = stepEls.length;
+      const current = pet.currentStep + 1;
+      stepProgressBar.style.width = `${(current / total) * 100}%`;
+      stepProgressLabel.textContent = `Question ${current} of ${total}`;
+      stepBackBtn.disabled = pet.currentStep === 0;
+      stepNextBtn.textContent = pet.currentStep === total - 1 ? 'See your results →' : 'Next →';
+    }
+
     function render() {
       const pet = getActivePet();
       const { species, size, coat, tier, avoids, favorites } = pet;
 
       renderPetTabs();
+      renderStepper(pet);
       petNameInput.value = pet.name.match(/^Pet \d+$/) ? '' : pet.name;
       weightInput.value = pet.weightKg ?? '';
       dobInput.value = pet.dob || '';
@@ -1132,18 +1307,16 @@
         buildTagButtons(species);
       }
 
-      if (species && tier) {
+      // No more locked/unlocked toggle here — the Pick Two step is
+      // unreachable in the stepper without tier already set (required
+      // step 9 enforces it), so this only needs the limit math now.
+      if (tier) {
         const limit = PICK_LIMITS[tier];
         [avoids, favorites].forEach((set) => {
           [...set].slice(limit).forEach((tag) => set.delete(tag));
         });
-        pickTwoLocked.hidden = true;
-        pickTwoBody.hidden = false;
         avoidLimitLabel.textContent = `(up to ${limit})`;
         favoriteLimitLabel.textContent = `(up to ${limit})`;
-      } else {
-        pickTwoLocked.hidden = false;
-        pickTwoBody.hidden = true;
       }
 
       [avoidOptions, favoriteOptions].forEach((container) => {
@@ -1165,8 +1338,13 @@
         const wanted = isLike ? true : false;
         btn.setAttribute('aria-pressed', pet.pendingTasteFeedback[tag] === wanted ? 'true' : 'false');
       });
-      feedbackLocked.hidden = Boolean(tier);
-      feedbackBody.hidden = !tier;
+      // feedbackBody is always shown now — this section only becomes
+      // reachable via #results-view, which requires tier already set
+      // (a required step before results can appear), so the old
+      // locked/unlocked toggle is unreachable dead logic. feedback-
+      // locked stays in the HTML but is permanently hidden.
+      feedbackLocked.hidden = true;
+      feedbackBody.hidden = false;
       consentPersonalize.checked = pet.pendingConsent.personalize;
       consentAggregate.checked = pet.pendingConsent.aggregate;
       renderFeedbackHistory(pet);
