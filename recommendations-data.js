@@ -170,15 +170,21 @@ export const ADULT_WEIGHT_KG = {
  * Obesity/weight guidance for adult/senior pets — null for puppy/kitten
  * (use getGrowthGuidance instead) or if life stage is unknown.
  *
- * First order (feedbackHistory empty): calculated from weight norms
- * vs. actual weight. Once real feedback exists, the latest entry
- * overrides the calculation and is held indefinitely (see file header
- * for the stale-feedback simplification this chose).
+ * First order (no portion feedback yet): calculated from weight norms
+ * vs. actual weight. Once real feedback exists, the latest portion
+ * entry overrides the calculation and is held indefinitely (see file
+ * header for the stale-feedback simplification this chose).
+ *
+ * feedbackHistory holds mixed entry shapes (portion entries from
+ * post-order feedback, and category/liked entries for taste memory —
+ * see catalog-data.js's getTasteMemoryExclusions) in one array, so this
+ * searches backward for the most recent entry that actually has a
+ * `portion` field, rather than assuming the array's last element is one.
  */
 export function getObesityGuidance(species, size, lifeStage, weightKg, feedbackHistory = []) {
   if (lifeStage !== 'adult' && lifeStage !== 'senior') return null;
 
-  const latestFeedback = feedbackHistory[feedbackHistory.length - 1];
+  const latestFeedback = [...feedbackHistory].reverse().find((entry) => entry && entry.portion);
   if (latestFeedback) {
     const copy = {
       'too much': 'Recent feedback says portions have been too much — this box adjusts portion size down.',

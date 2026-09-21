@@ -373,6 +373,69 @@
       border-color: #c8b48c;
       background-color: #f5f0e6;
     }
+
+    /* Feedback */
+    .feedback-section {
+      margin-top: 32px;
+      padding-top: 28px;
+      border-top: 1px solid #ece2cd;
+    }
+
+    .feedback-tag-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .feedback-tag-row .ft-name {
+      min-width: 100px;
+      font-size: 0.85rem;
+    }
+
+    .feedback-tag-btn {
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1.5px solid #e4d9c4;
+      background-color: #fffdf9;
+      color: #4a3f35;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
+    .feedback-tag-btn:hover {
+      border-color: #c8b48c;
+    }
+
+    .feedback-tag-btn.like[aria-pressed="true"] {
+      background-color: #5c8a5c;
+      border-color: #5c8a5c;
+      color: #fffdf9;
+    }
+
+    .feedback-tag-btn.dislike[aria-pressed="true"] {
+      background-color: #b04a3f;
+      border-color: #b04a3f;
+      color: #fffdf9;
+    }
+
+    .feedback-history {
+      list-style: none;
+      margin: 16px 0 0;
+      padding: 0;
+      font-size: 0.8rem;
+      color: #7a6c5b;
+      line-height: 1.6;
+    }
+
+    .feedback-history li {
+      padding: 6px 0;
+      border-bottom: 1px solid #f5f0e6;
+    }
+
+    .feedback-history li:last-child {
+      border-bottom: none;
+    }
   </style>
 </head>
 <body>
@@ -550,6 +613,37 @@
         </div>
       </div>
 
+      <!-- Post-order feedback (Section 7) — simulated here since this
+           demo has no real order/checkout lifecycle to trigger it after
+           an actual shipped box. Submitting feeds pet.feedbackHistory,
+           which is what makes the obesity-guidance override above and
+           Taste memory below go from "architecture-only" to live. -->
+      <div class="feedback-section">
+        <h2>Feedback <span class="q-optional">(simulates a delivered box)</span></h2>
+        <p class="rec-empty-note" id="feedback-locked">Pick a plan above to unlock this</p>
+        <div id="feedback-body" hidden>
+          <p class="section-intro" style="margin-bottom:16px;">
+            In a real launch this would trigger automatically after each box ships
+            (Section 7). Here, simulate submitting feedback to see Taste memory and
+            weight guidance react.
+          </p>
+          <div class="question">
+            <label class="q-label">Portion size</label>
+            <div class="options" data-question="pendingPortion">
+              <button type="button" class="option-btn" data-value="too much">Too much</button>
+              <button type="button" class="option-btn" data-value="right">Just right</button>
+              <button type="button" class="option-btn" data-value="too little">Too little</button>
+            </div>
+          </div>
+          <div class="question">
+            <label class="q-label">Did they like each flavor? <span class="q-optional">(optional, any number)</span></label>
+            <div id="feedback-tags"></div>
+          </div>
+          <button type="button" class="add-pet-btn" id="submit-feedback-btn">Submit feedback for this box</button>
+          <ul class="feedback-history" id="feedback-history-list"></ul>
+        </div>
+      </div>
+
       <div class="disclaimer">
         <strong>ⓘ Please note:</strong> everything shown above — price, dental,
         exercise, and weight/growth guidance — is informational only, not
@@ -590,12 +684,19 @@
         tier: null,
         avoids: new Set(),
         favorites: new Set(),
-        // Post-order portion feedback (Section 7) — always empty in this
-        // build, since the post-order feedback flow itself is still
-        // queued. Wired here so getObesityGuidance's and
-        // getTasteMemoryExclusions' feedback-driven paths are ready the
-        // moment that flow exists.
+        // Post-order portion feedback (Section 7). Simulated in this
+        // build via the Feedback section below, since there's no real
+        // order/checkout lifecycle to trigger it after an actual shipped
+        // box. Mixed entry shapes: { portion, order } from the portion
+        // question, { category, liked, order } per flavor reaction —
+        // read by getObesityGuidance and getTasteMemoryExclusions.
         feedbackHistory: [],
+        orderCount: 0,
+        // Draft state for the not-yet-submitted feedback form — cleared
+        // on submit. pendingPortion reuses the generic single-select
+        // option-group wiring (data-question="pendingPortion").
+        pendingPortion: null,
+        pendingTasteFeedback: {}, // { [flavorTag]: true|false }
         // Bumped by the "🎲 Try another" button to deliberately change
         // the secret-item pick's seed — otherwise the pick stays stable
         // across re-renders (see catalog-data.js's hashSeed comment).
@@ -641,6 +742,11 @@
     const recSecretText = document.getElementById('rec-secret-text');
     const secretRerollBtn = document.getElementById('secret-reroll-btn');
     const recTasteMemoryText = document.getElementById('rec-taste-memory-text');
+    const feedbackLocked = document.getElementById('feedback-locked');
+    const feedbackBody = document.getElementById('feedback-body');
+    const feedbackTagsEl = document.getElementById('feedback-tags');
+    const submitFeedbackBtn = document.getElementById('submit-feedback-btn');
+    const feedbackHistoryList = document.getElementById('feedback-history-list');
 
     const speciesEmoji = { dog: '🐶', cat: '🐱' };
     const sizeLabel = { small: 'Small', medium: 'Medium', large: 'Large' };
@@ -666,6 +772,7 @@
     // which value is currently selected.
     let tagsBuiltForSpecies = undefined; // undefined = never built yet
     let breedOptionsBuiltForSpecies = undefined;
+    let feedbackTagsBuiltForSpecies = undefined;
 
     function buildTagButtons(species) {
       avoidOptions.innerHTML = '';
@@ -722,6 +829,44 @@
       });
     }
 
+    // Feedback tag rows (like/dislike per flavor) — same species-
+    // dependent DOM pattern as buildTagButtons: shared across pets of
+    // the same species, handlers always look up getActivePet() fresh.
+    function buildFeedbackTagButtons(species) {
+      feedbackTagsEl.innerHTML = '';
+      feedbackTagsBuiltForSpecies = species;
+      if (!species) return;
+      FLAVOR_TAGS_BY_SPECIES[species].forEach((tag) => {
+        const row = document.createElement('div');
+        row.className = 'feedback-tag-row';
+        const name = document.createElement('span');
+        name.className = 'ft-name';
+        name.textContent = tag;
+        row.appendChild(name);
+        [
+          { cls: 'like', label: '👍 Liked', value: true },
+          { cls: 'dislike', label: '👎 Disliked', value: false },
+        ].forEach(({ cls, label, value }) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = `feedback-tag-btn ${cls}`;
+          btn.dataset.tag = tag;
+          btn.setAttribute('aria-pressed', 'false');
+          btn.textContent = label;
+          btn.addEventListener('click', () => {
+            const pet = getActivePet();
+            // Click again to unset (toggle back to "no opinion"); click
+            // the other reaction to flip it — only one state per tag.
+            pet.pendingTasteFeedback[tag] = pet.pendingTasteFeedback[tag] === value ? undefined : value;
+            if (pet.pendingTasteFeedback[tag] === undefined) delete pet.pendingTasteFeedback[tag];
+            render();
+          });
+          row.appendChild(btn);
+        });
+        feedbackTagsEl.appendChild(row);
+      });
+    }
+
     // Wire up every single-select option group (species/size/coat/tier/
     // spayedNeutered): click writes onto whichever pet is currently active.
     document.querySelectorAll('.options[data-question]').forEach((group) => {
@@ -737,6 +882,7 @@
             pet.avoids.clear();
             pet.favorites.clear();
             pet.breed = null;
+            pet.pendingTasteFeedback = {}; // unsubmitted draft only — feedbackHistory stays
           }
           pet[question] = btn.dataset.value;
           render();
@@ -751,6 +897,26 @@
 
     secretRerollBtn.addEventListener('click', () => {
       getActivePet().secretItemRerollCount += 1;
+      render();
+    });
+
+    submitFeedbackBtn.addEventListener('click', () => {
+      const pet = getActivePet();
+      const hasPortion = pet.pendingPortion != null;
+      const tasteEntries = Object.entries(pet.pendingTasteFeedback);
+      if (!hasPortion && tasteEntries.length === 0) return; // nothing to submit
+      pet.orderCount += 1;
+      const order = pet.orderCount;
+      if (hasPortion) {
+        pet.feedbackHistory.push({ portion: pet.pendingPortion, order });
+      }
+      tasteEntries.forEach(([tag, liked]) => {
+        pet.feedbackHistory.push({ category: tag, liked, order });
+      });
+      // Clear the draft, including the pendingPortion option group's
+      // pressed state, so the form is ready for the "next box".
+      pet.pendingPortion = null;
+      pet.pendingTasteFeedback = {};
       render();
     });
 
@@ -879,6 +1045,22 @@
         });
       });
 
+      // Feedback: tag DOM is species-dependent only, same pattern as
+      // Pick Two's tags; the section itself is gated on tier alone
+      // (simulating "a box exists to give feedback on").
+      if (species !== feedbackTagsBuiltForSpecies) {
+        buildFeedbackTagButtons(species);
+      }
+      feedbackTagsEl.querySelectorAll('.feedback-tag-btn').forEach((btn) => {
+        const tag = btn.dataset.tag;
+        const isLike = btn.classList.contains('like');
+        const wanted = isLike ? true : false;
+        btn.setAttribute('aria-pressed', pet.pendingTasteFeedback[tag] === wanted ? 'true' : 'false');
+      });
+      feedbackLocked.hidden = Boolean(tier);
+      feedbackBody.hidden = !tier;
+      renderFeedbackHistory(pet);
+
       pickTwoSummary.textContent = tier && (avoids.size || favorites.size)
         ? `Avoid: ${avoids.size ? [...avoids].join(', ') : '—'} · Favorite: ${favorites.size ? [...favorites].join(', ') : '—'}`
         : '';
@@ -925,6 +1107,31 @@
       }
 
       renderRecommendations(pet, species, size);
+    }
+
+    function renderFeedbackHistory(pet) {
+      feedbackHistoryList.innerHTML = '';
+      if (!pet.feedbackHistory.length) return;
+      // Group entries by their shared `order` number (one submit click =
+      // one order) so the history reads as "Box #1: ..." per submission,
+      // not one line per individual entry.
+      const byOrder = new Map();
+      pet.feedbackHistory.forEach((entry) => {
+        if (!byOrder.has(entry.order)) byOrder.set(entry.order, []);
+        byOrder.get(entry.order).push(entry);
+      });
+      [...byOrder.entries()].forEach(([order, entries]) => {
+        const parts = [];
+        const portionEntry = entries.find((e) => e.portion);
+        if (portionEntry) parts.push(`portion ${portionEntry.portion}`);
+        const liked = entries.filter((e) => e.category && e.liked === true).map((e) => e.category);
+        const disliked = entries.filter((e) => e.category && e.liked === false).map((e) => e.category);
+        if (liked.length) parts.push(`liked ${liked.join(', ')}`);
+        if (disliked.length) parts.push(`disliked ${disliked.join(', ')}`);
+        const li = document.createElement('li');
+        li.textContent = `Box #${order} — ${parts.join(' · ')}`;
+        feedbackHistoryList.appendChild(li);
+      });
     }
 
     function renderRecommendations(pet, species, size) {
@@ -993,14 +1200,20 @@
         recSecretText.textContent = ` e.g. ${secret.name} (${secret.category}) — a preview example, not a guaranteed pick.`;
       }
 
-      // Taste memory: architecture-only for now — feedbackHistory is
-      // always empty until the post-order feedback flow (still queued)
-      // exists, so this always reports "no feedback yet" today. Shown
-      // whenever the rest of the recommendations body is shown.
+      // Taste memory: live now that the Feedback section below can
+      // actually populate pet.feedbackHistory (previously architecture-
+      // only). Three distinct states, not just "has any exclusion yet":
+      // no feedback submitted at all, feedback exists but no repeat-
+      // dislike pattern yet, or an active exclusion.
       const exclusions = getTasteMemoryExclusions(pet.feedbackHistory);
-      recTasteMemoryText.textContent = exclusions.length
-        ? ` Quietly excluding: ${exclusions.join(', ')} (repeated dislikes).`
-        : ' No feedback yet — PawPass will start quietly filtering out repeat dislikes once you\'ve placed a few orders.';
+      const hasTasteFeedback = pet.feedbackHistory.some((e) => e.category);
+      if (exclusions.length) {
+        recTasteMemoryText.textContent = ` Quietly excluding: ${exclusions.join(', ')} (repeated dislikes).`;
+      } else if (hasTasteFeedback) {
+        recTasteMemoryText.textContent = ' No repeat dislikes yet — keeps quietly filtering out anything disliked twice in a row.';
+      } else {
+        recTasteMemoryText.textContent = ' No feedback yet — submit feedback below to see this react.';
+      }
     }
 
     render();
