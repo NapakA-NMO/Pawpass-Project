@@ -436,6 +436,40 @@
     .feedback-history li:last-child {
       border-bottom: none;
     }
+
+    .consent-block {
+      margin-top: 20px;
+      padding: 14px 16px;
+      background-color: #f5f0e6;
+      border-radius: 10px;
+    }
+
+    .consent-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 0.82rem;
+      line-height: 1.5;
+      color: #5c5044;
+      margin-bottom: 10px;
+      cursor: pointer;
+    }
+
+    .consent-row:last-of-type {
+      margin-bottom: 0;
+    }
+
+    .consent-row input[type="checkbox"] {
+      margin-top: 3px;
+      flex-shrink: 0;
+    }
+
+    .consent-hint {
+      margin: 8px 0 0;
+      font-size: 0.75rem;
+      color: #b04a3f;
+      min-height: 1em;
+    }
   </style>
 </head>
 <body>
@@ -639,6 +673,32 @@
             <label class="q-label">Did they like each flavor? <span class="q-optional">(optional, any number)</span></label>
             <div id="feedback-tags"></div>
           </div>
+
+          <!-- PDPA consent, captured at the point of collection (Thai PDPA,
+               enforced since June 1, 2022, requires explicit consent
+               before/at collection — Section 9's flagged gap). Two
+               separate purposes, not bundled into one checkbox: using
+               the feedback to personalize this pet's box (Section 7,
+               core to the service) vs. including it in aggregated,
+               de-identified trend insights sold to pet brand partners
+               (Section 7's data-as-product angle, framed as "aggregated
+               insights," never "selling customer data," per the brief). -->
+          <div class="consent-block">
+            <label class="consent-row">
+              <input type="checkbox" id="consent-personalize" />
+              I consent to this feedback being used to personalize my pet's box
+              (Pick Two suggestions, taste memory, portion sizing).
+            </label>
+            <label class="consent-row">
+              <input type="checkbox" id="consent-aggregate" />
+              Also include my anonymized feedback in aggregated trend insights
+              shared with pet brand partners
+              <span class="info-icon" title="Only de-identified, aggregated trends are ever shared (e.g. 'medium-dog owners in Bangkok reject fish treats at 2x the rate of other cities') — never your individual feedback or identity. Optional — personalization above works the same either way.">ⓘ</span>
+              <span class="q-optional">(optional)</span>
+            </label>
+            <p class="consent-hint" id="consent-hint"></p>
+          </div>
+
           <button type="button" class="add-pet-btn" id="submit-feedback-btn">Submit feedback for this box</button>
           <ul class="feedback-history" id="feedback-history-list"></ul>
         </div>
@@ -697,6 +757,10 @@
         // option-group wiring (data-question="pendingPortion").
         pendingPortion: null,
         pendingTasteFeedback: {}, // { [flavorTag]: true|false }
+        // Per-pet, not global DOM state — otherwise checking a consent
+        // box for one pet would leak into another pet's unsubmitted
+        // form on switch. Reset on submit, same as the rest of the draft.
+        pendingConsent: { personalize: false, aggregate: false },
         // Bumped by the "🎲 Try another" button to deliberately change
         // the secret-item pick's seed — otherwise the pick stays stable
         // across re-renders (see catalog-data.js's hashSeed comment).
@@ -747,6 +811,9 @@
     const feedbackTagsEl = document.getElementById('feedback-tags');
     const submitFeedbackBtn = document.getElementById('submit-feedback-btn');
     const feedbackHistoryList = document.getElementById('feedback-history-list');
+    const consentPersonalize = document.getElementById('consent-personalize');
+    const consentAggregate = document.getElementById('consent-aggregate');
+    const consentHint = document.getElementById('consent-hint');
 
     const speciesEmoji = { dog: '🐶', cat: '🐱' };
     const sizeLabel = { small: 'Small', medium: 'Medium', large: 'Large' };
@@ -905,19 +972,46 @@
       const hasPortion = pet.pendingPortion != null;
       const tasteEntries = Object.entries(pet.pendingTasteFeedback);
       if (!hasPortion && tasteEntries.length === 0) return; // nothing to submit
+
+      // PDPA: explicit consent required at the point of collection, not
+      // assumed. The personalize checkbox gates submission entirely;
+      // the aggregate checkbox is a genuine opt-in (unchecked doesn't
+      // block anything) and its answer is stamped onto every entry from
+      // this submission, so a real aggregation pipeline later could
+      // actually honor it per-entry rather than per-account.
+      if (!pet.pendingConsent.personalize) {
+        consentHint.textContent = 'Please check the first consent box before submitting feedback.';
+        return;
+      }
+      consentHint.textContent = '';
+
       pet.orderCount += 1;
       const order = pet.orderCount;
+      const aggregateConsent = pet.pendingConsent.aggregate;
       if (hasPortion) {
-        pet.feedbackHistory.push({ portion: pet.pendingPortion, order });
+        pet.feedbackHistory.push({ portion: pet.pendingPortion, order, aggregateConsent });
       }
       tasteEntries.forEach(([tag, liked]) => {
-        pet.feedbackHistory.push({ category: tag, liked, order });
+        pet.feedbackHistory.push({ category: tag, liked, order, aggregateConsent });
       });
       // Clear the draft, including the pendingPortion option group's
-      // pressed state, so the form is ready for the "next box".
+      // pressed state and both consent checkboxes, so the next box's
+      // feedback requires its own fresh, explicit consent rather than
+      // silently carrying the previous answer forward.
       pet.pendingPortion = null;
       pet.pendingTasteFeedback = {};
+      pet.pendingConsent = { personalize: false, aggregate: false };
       render();
+    });
+
+    consentPersonalize.addEventListener('change', () => {
+      getActivePet().pendingConsent.personalize = consentPersonalize.checked;
+      consentHint.textContent = '';
+    });
+
+    consentAggregate.addEventListener('change', () => {
+      getActivePet().pendingConsent.aggregate = consentAggregate.checked;
+      consentHint.textContent = '';
     });
 
     weightInput.addEventListener('input', () => {
@@ -1059,6 +1153,8 @@
       });
       feedbackLocked.hidden = Boolean(tier);
       feedbackBody.hidden = !tier;
+      consentPersonalize.checked = pet.pendingConsent.personalize;
+      consentAggregate.checked = pet.pendingConsent.aggregate;
       renderFeedbackHistory(pet);
 
       pickTwoSummary.textContent = tier && (avoids.size || favorites.size)
