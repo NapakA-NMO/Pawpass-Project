@@ -289,6 +289,13 @@
       border-color: #b04a3f;
     }
 
+    .photo-upload-error {
+      margin: 10px 0 0;
+      font-size: 0.75rem;
+      color: #b04a3f;
+      line-height: 1.5;
+    }
+
     .photo-caption {
       margin-top: 14px;
       font-size: 0.85rem;
@@ -884,6 +891,7 @@
             <input type="file" accept="image/*" id="photo-upload-input" hidden />
             <button type="button" class="remove-photo-btn" id="remove-photo-btn" hidden>✕ Remove</button>
           </div>
+          <p class="photo-upload-error" id="photo-upload-error" hidden></p>
           <div class="photo-caption" id="photo-caption">Pick your pet's profile to begin</div>
           <div class="photo-placeholder-note" id="photo-placeholder-note">Placeholder — real product photography coming later</div>
           <div class="live-price" id="live-price">—</div>
@@ -1340,6 +1348,7 @@
     const photoEmoji = document.getElementById('photo-emoji');
     const photoImg = document.getElementById('photo-img');
     const photoUploadInput = document.getElementById('photo-upload-input');
+    const photoUploadError = document.getElementById('photo-upload-error');
     const removePhotoBtn = document.getElementById('remove-photo-btn');
     const photoPlaceholderNote = document.getElementById('photo-placeholder-note');
     const photoCaption = document.getElementById('photo-caption');
@@ -1778,6 +1787,7 @@
     photoUploadInput.addEventListener('change', () => {
       const file = photoUploadInput.files[0];
       if (!file) return;
+      photoUploadError.hidden = true; // clear any previous failure message
       const pet = getActivePet();
       if (pet.photoUrl) URL.revokeObjectURL(pet.photoUrl); // release the old one first
       pet.photoUrl = URL.createObjectURL(file);
@@ -1789,13 +1799,17 @@
       const pet = getActivePet();
       if (pet.photoUrl) URL.revokeObjectURL(pet.photoUrl);
       pet.photoUrl = null;
+      photoUploadError.hidden = true;
       render();
     });
 
     // Safety net: accept="image/*" filters the file picker but doesn't
     // guarantee the browser can actually decode the file (corrupted
-    // file, unsupported format). Without this, a failed load would
-    // leave a permanently broken-image icon in the photo box.
+    // file, an HEIC photo straight off an iPhone that this browser
+    // can't render, etc). This used to fail completely silently —
+    // reverting to the emoji placeholder with zero indication anything
+    // had gone wrong, which looks exactly like "nothing happened" —
+    // now it says so.
     photoImg.addEventListener('error', () => {
       if (photoImg.hidden) return; // no real photo currently set — ignore
       const pet = getActivePet();
@@ -1803,6 +1817,8 @@
         URL.revokeObjectURL(pet.photoUrl);
         pet.photoUrl = null;
       }
+      photoUploadError.hidden = false;
+      photoUploadError.textContent = "That photo couldn't be loaded — try a different file (some phone photo formats, like HEIC on iPhone, aren't supported by every browser; a JPG or PNG is safest).";
       render();
     });
 
@@ -1970,6 +1986,7 @@
 
     function switchPet(id) {
       activePetId = id;
+      photoUploadError.hidden = true; // don't leak a stale error onto a different pet
       render();
     }
 
