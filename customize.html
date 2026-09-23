@@ -1318,6 +1318,12 @@
     // is showing instead of the active pet's quiz/results view.
     let showAllPetsReview = false;
 
+    // Page-level (not per-pet, unlike pendingAdvanceTimeout) since
+    // photoBox is one shared DOM element showing whichever pet is
+    // currently active — there's only ever one pulse animation in
+    // flight at a time regardless of how many pets exist.
+    let pulseTimeout = null;
+
     const petTabsEl = document.getElementById('pet-tabs');
     const petNameInput = document.getElementById('pet-name-input');
     const startOverBtn = document.getElementById('start-over-btn');
@@ -2162,9 +2168,19 @@
       const photoSignature = `${pet.photoUrl || ''}|${species || ''}`;
       if (pet._lastPhotoSignature !== photoSignature) {
         pet._lastPhotoSignature = photoSignature;
+        if (pulseTimeout) clearTimeout(pulseTimeout);
         photoBox.classList.remove('pulse');
         void photoBox.offsetWidth; // restart animation
         photoBox.classList.add('pulse');
+        // .pulse was previously never removed again after this point —
+        // the box sat permanently scaled up 4% (transform: scale(1.04))
+        // from the very first render onward instead of briefly pulsing.
+        // Removing it after the CSS transition duration (150ms) restores
+        // the intended one-shot pulse.
+        pulseTimeout = setTimeout(() => {
+          photoBox.classList.remove('pulse');
+          pulseTimeout = null;
+        }, 200);
       }
 
       const parts = [];
