@@ -228,6 +228,7 @@
     }
 
     .photo-box {
+      position: relative; /* containing block for .photo-box img below */
       width: 100%;
       aspect-ratio: 1 / 1;
       border-radius: 12px;
@@ -246,6 +247,15 @@
     }
 
     .photo-box img {
+      /* Absolutely positioned (relative to .photo-box, set above)
+         instead of a percentage height inside a flex column — that
+         combination is a known-unreliable pattern across browsers even
+         where the spec technically resolves it, and matches the
+         reported bug exactly: the image loads with no error, it just
+         never becomes visually sized. This sidesteps flex percentage
+         resolution entirely by sizing directly against the parent box. */
+      position: absolute;
+      inset: 0;
       width: 100%;
       height: 100%;
       object-fit: cover;
